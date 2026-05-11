@@ -1,0 +1,15 @@
+{
+  "dataset_name": "fashion_mnist.zip",
+  "dataset_type": "image",
+  "preprocessing_steps": "image normalization",
+  "task": "imageclassification",
+  "model_type": "ResNet",
+  "additional_info": null,
+  "dataset_ids": [
+    "93359",
+    "00774",
+    "05949",
+    "91797",
+    "92656"
+  ]
+}

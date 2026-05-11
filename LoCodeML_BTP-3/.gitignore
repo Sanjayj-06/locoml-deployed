@@ -1,0 +1,54 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+package-lock.json
+
+# testing
+/coverage
+
+# production
+/build
+
+/paper-dashboard-react-main
+
+/backend/Models/*
+!/backend/Models/.gitkeep
+/backend/APIs/__pycache__
+/backend/__pycache__
+/backend/app2/Model
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env
+backend/finetuning-sentiment-model-3000-samples
+backend/functions/finetuning-sentiment-model-3000-samples
+backend/Datasets/*
+!backend/Datasets/.gitkeep
+backend/processedDatasets/*
+!backend/processedDatasets/.gitkeep
+backend/ExtractedDastasets/*
+!backend/ExtractedDastasets/.gitkeep
+backed/PreproccessingTasks/*
+backend/APIs/responses/*
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules
+node_modules_1
+backend/venv
+
+.vscode
+.idea
+.venv
+test.py
+
+wordnet
+*.pyc
+
+backend/.env

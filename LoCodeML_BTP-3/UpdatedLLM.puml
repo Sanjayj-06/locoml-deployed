@@ -1,0 +1,35 @@
+@startuml
+actor User
+participant "Application"
+participant "API Layer"
+participant "Model Zoo"
+participant "LLM Service"
+participant "Pipeline Generator"
+
+User -> Application: 1. Upload Dataset
+
+group Pipeline Creation/Editing Loop
+    User -> "Application": 2.Submit Prompt (Edit)
+    "Application" -> "API Layer": 3. Send Request
+    "API Layer" -> "API Layer": 4. Validate Request
+    "API Layer" --> "API Layer": 5. Enrich Context
+    "API Layer" -> "Model Zoo": 6. Retrieve Compatible Models
+    "Model Zoo" --> "API Layer": 7. Return Model Metadata
+    "API Layer" -> "LLM Service": 8. Construct and Send Augmented Prompt
+    "LLM Service" --> "API Layer": 9. Return LLM Response
+    "API Layer" --> "API Layer": 10. Parse and Validate Response
+    "API Layer" -> "Pipeline Generator": 11. Submit Structured Data
+    "Pipeline Generator" --> "API Layer": 12. Generate/Update Pipeline
+    "API Layer" --> "Application": 13. Return Pipeline Data
+    "Application" --> User: 14. Render and Display Pipeline
+end
+
+User -> User: 15. Review Pipeline
+
+alt User Satisfied
+    User -> "Application": 16. Finalize Pipeline
+else User Not Satisfied
+    User -> User: 17. Modify and Repeat Loop
+end
+@enduml
+

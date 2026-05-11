@@ -1,0 +1,2 @@
+- Assuming .csv files only uploaded for the classification and regeression tasks.
+- currently supports hugging face datasets only for image calssification task.

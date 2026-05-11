@@ -1,0 +1,170 @@
+{
+    "model_id": "LDWHIN",
+    "model_name": "Test",
+    "training_mode": "AutoML",
+    "estimator_type": "AdaBoostClassifier",
+    "metric_mode": "AutoSelect",
+    "metric_type": "AUC",
+    "saved_model_path": "/Users/harshitkarwal/Developer/BTP/LoCodeML_BTP/backend/Models/LDWHIN.pkl",
+    "dataset_id": "15166",
+    "objective": "classification",
+    "target_column": "income",
+    "parameters": [
+        {
+            "parameter_name": "algorithm",
+            "parameter_value": "SAMME.R"
+        },
+        {
+            "parameter_name": "estimator",
+            "parameter_value": "None"
+        },
+        {
+            "parameter_name": "learning_rate",
+            "parameter_value": 1.0
+        },
+        {
+            "parameter_name": "n_estimators",
+            "parameter_value": 50
+        },
+        {
+            "parameter_name": "random_state",
+            "parameter_value": "None"
+        }
+    ],
+    "evaluation_metrics": [
+        {
+            "metric_name": "classifier",
+            "metric_value": "AdaBoostClassifier"
+        },
+        {
+            "metric_name": "Accuracy",
+            "metric_value": 0.855
+        },
+        {
+            "metric_name": "Precision",
+            "metric_value": 0.8168
+        },
+        {
+            "metric_name": "Recall",
+            "metric_value": 0.7593
+        },
+        {
+            "metric_name": "F1",
+            "metric_value": 0.7814
+        },
+        {
+            "metric_name": "AUC",
+            "metric_value": 0.9123
+        }
+    ],
+    "all_models_results": [
+        {
+            "classifier": "AdaBoostClassifier",
+            "Accuracy": 0.855,
+            "Precision": 0.8168,
+            "Recall": 0.7593,
+            "F1": 0.7814,
+            "AUC": 0.9123
+        },
+        {
+            "classifier": "RandomForestClassifier",
+            "Accuracy": 0.8555,
+            "Precision": 0.8141,
+            "Recall": 0.7658,
+            "F1": 0.7851,
+            "AUC": 0.9076
+        },
+        {
+            "classifier": "LogisticRegression",
+            "Accuracy": 0.8415,
+            "Precision": 0.7958,
+            "Recall": 0.7377,
+            "F1": 0.7592,
+            "AUC": 0.8959
+        },
+        {
+            "classifier": "DecisionTreeClassifier",
+            "Accuracy": 0.8132,
+            "Precision": 0.7429,
+            "Recall": 0.746,
+            "F1": 0.7444,
+            "AUC": 0.7459
+        },
+        {
+            "classifier": "SVC",
+            "Accuracy": 0.3534,
+            "Precision": 0.5812,
+            "Recall": 0.555,
+            "F1": 0.3476,
+            "AUC": 0.7079
+        }
+    ],
+    "input_schema": [
+        {
+            "column_name": "age",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "workclass",
+            "column_type": "object"
+        },
+        {
+            "column_name": "fnlwgt",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "education",
+            "column_type": "object"
+        },
+        {
+            "column_name": "educational-num",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "marital-status",
+            "column_type": "object"
+        },
+        {
+            "column_name": "occupation",
+            "column_type": "object"
+        },
+        {
+            "column_name": "relationship",
+            "column_type": "object"
+        },
+        {
+            "column_name": "race",
+            "column_type": "object"
+        },
+        {
+            "column_name": "gender",
+            "column_type": "object"
+        },
+        {
+            "column_name": "capital-gain",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "capital-loss",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "hours-per-week",
+            "column_type": "float64"
+        },
+        {
+            "column_name": "native-country",
+            "column_type": "object"
+        }
+    ],
+    "output_schema": [
+        {
+            "column_name": "income",
+            "column_type": "int64"
+        }
+    ],
+    "output_mapping": {
+        "0": "<=50K",
+        "1": ">50K"
+    }
+}

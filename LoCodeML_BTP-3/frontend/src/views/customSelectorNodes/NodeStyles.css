@@ -1,0 +1,29 @@
+.switchNode {
+    /* background-color: #E0D874; */
+    /* border-radius: 8px; */
+    width: 100px;
+    height: 30px;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px #0000001a;
+}
+
+.switchIcon {
+    background-image: url();
+    width: 1px;
+    height: 1px;
+    margin-right: 8px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.switchLabel {
+    font-size: 10px;
+    font-weight: bold;
+    font-family:Arial, Helvetica, sans-serif;
+    margin-left: 15px;
+    color: #333;
+}

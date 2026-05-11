@@ -1,0 +1,84 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+
+  main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.kaggle:/root/.kaggle:ro
+    entrypoint: ["python", "app.py"]
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - KAGGLE_CONFIG_DIR=/root/.kaggle
+    depends_on:
+      - redis
+
+  master_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "5001:5001"
+    entrypoint: ["python", "APIs/inferenceMicroservices/masterServer.py"]
+    env_file:
+      - ./.env
+
+  input_router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "5002:5002"
+    entrypoint: ["python", "APIs/inferenceMicroservices/inputRouter.py"]
+    env_file:
+      - ./.env
+
+  preprocess_router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "5003:5003"
+    entrypoint: ["python", "APIs/inferenceMicroservices/preprocessRouter.py"]
+    env_file:
+      - ./.env
+
+  model_router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - ./backend:/app/backend
+    ports:
+      - "5004:5004"
+    entrypoint: ["python", "APIs/inferenceMicroservices/modelRouter.py"]
+    env_file:
+      - ./.env
+
+  pipeline_router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "5005:5005"
+    entrypoint: ["python", "APIs/inferenceMicroservices/pipelineRouter.py"]
+    env_file:
+      - ./.env

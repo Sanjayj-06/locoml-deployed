@@ -1,0 +1,60 @@
+{
+    "os": "macOS-14.4.1-arm64-arm-64bit",
+    "python": "3.11.9",
+    "heartbeatAt": "2024-05-06T06:03:15.277330",
+    "startedAt": "2024-05-06T06:03:11.011454",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "67908",
+        "Sent_test",
+        "",
+        "None",
+        "sentiment",
+        "AutoSelect",
+        "",
+        "sentiment",
+        "None",
+        "False"
+    ],
+    "state": "running",
+    "program": "/Users/harshitkarwal/Developer/BTP/LoCodeML_BTP/backend/functions/trainModelAutoML.py",
+    "codePathLocal": "functions/trainModelAutoML.py",
+    "codePath": "backend/functions/trainModelAutoML.py",
+    "git": {
+        "remote": "git@github.com:karthikv1392/LoCodeML_BTP.git",
+        "commit": "f9e4946cbb4f12a4d00730e44056fe03323a8d48"
+    },
+    "email": "karwalharshit@gmail.com",
+    "root": "/Users/harshitkarwal/Developer/BTP/LoCodeML_BTP",
+    "host": "Harshits-MacBook-Pro.local",
+    "username": "harshitkarwal",
+    "executable": "/opt/homebrew/opt/python@3.11/bin/python3.11",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 3228,
+        "min": 600,
+        "max": 3228
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3228,
+            "min": 600,
+            "max": 3228
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 460.4317207336426,
+            "used": 9.536762237548828
+        }
+    },
+    "gpuapple": {
+        "type": "arm",
+        "vendor": "Apple"
+    },
+    "memory": {
+        "total": 16.0
+    }
+}

@@ -1,0 +1,2 @@
+## Bugs :
+- In Train, After selecting a dataset, lets say it's there locally, so fetches correctly. Later if you try to change the dataset, the status of fetch and column values are not being updated. Arises only if the changed dataset is not present.
