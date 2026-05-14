@@ -1,2 +1,3 @@
 ECOS - Evolutionary Cognitive Orchestration System
 impelementing new features to LoCoMl
+internship
