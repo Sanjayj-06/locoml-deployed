@@ -85,6 +85,9 @@ function Train() {
   });
   const classes = useStyles();
 
+  const trainUrl =
+    process.env.REACT_APP_TRAIN_URL || "http://127.0.0.1:5000/trainModel";
+
   const steps = ["Training Options", "Model Selection", "Train the model"];
   const updateStep0Variables = (data) => {
     console.log(data);
@@ -183,7 +186,7 @@ function Train() {
       estimated_time_left: "Calculating",
     });
     console.log("posting");
-    console.log(process.env.REACT_APP_TRAIN_URL);
+    console.log(trainUrl);
     const eventSource = new EventSource(
       "http://127.0.0.1:5000/stream?channel=mychannel"
     );
@@ -212,7 +215,7 @@ function Train() {
     console.log(sklearnModelName);
 
     axios
-      .post(process.env.REACT_APP_TRAIN_URL, {
+      .post(trainUrl, {
         dataset_id: selectedDatasetID,
         training_mode: trainingMode,
         model_type: sklearnModelName,

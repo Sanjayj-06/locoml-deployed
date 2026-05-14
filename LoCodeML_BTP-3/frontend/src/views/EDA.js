@@ -12,7 +12,7 @@ import {
   CardTitle,
   Table,
 } from "reactstrap";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function EDA() {
   const [datasets, setDatasets] = useState([]);
@@ -20,11 +20,20 @@ function EDA() {
   const [loading, setLoading] = useState(false); // Controls the loading state
   const [datasetData, setDatasetData] = useState(null); // Will be null until data is set
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const apiBaseUrl =
+    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+  const getAllDatasetsUrl =
+    process.env.REACT_APP_GET_ALL_DATASETS_URL ||
+    `${apiBaseUrl}/getDatasets`;
+  const preprocessingUrl =
+    process.env.REACT_APP_PREPROCESSING_URL || `${apiBaseUrl}/preprocess`;
 
   // Fetch datasets when the component loads
   useEffect(() => {
     axios
-      .get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+      .get(getAllDatasetsUrl)
       .then((response) => {
         const dataset_list = response.data["dataset_list"];
         setDatasets(dataset_list);
@@ -34,6 +43,20 @@ function EDA() {
       });
   }, []);
 
+  useEffect(() => {
+    const datasetId = location.state?.datasetId;
+    if (!datasetId || datasets.length === 0) {
+      return;
+    }
+
+    const match = datasets.find(
+      (dataset) => dataset.dataset_id === datasetId
+    );
+    if (match) {
+      handleSelect(match);
+    }
+  }, [datasets, location.state]);
+
   // Function to handle dataset selection
   const handleSelect = async (dataset) => {
     setSelectedDataset(dataset);
@@ -42,7 +65,9 @@ function EDA() {
       const fileName = dataset.dataset_name;
       const fileExtension = fileName.split('.').pop().toLowerCase();
       if (fileExtension === "csv") {
-        const response = await axios.get('http://127.0.0.1:5000/eda/' + dataset.dataset_id);
+        const response = await axios.get(
+          `${apiBaseUrl}/eda/${dataset.dataset_id}`
+        );
         console.log('API response:', response.data['column_details']);
         if (response.data && response.data["column_details"]) {
           setDatasetData(response.data); // Set datasetData only when data is available
@@ -52,7 +77,9 @@ function EDA() {
         }
       } else if (fileExtension === "zip") {
         // Handle zip files...
-        const response = await axios.get('http://127.0.0.1:5000/img_eda/' + dataset.dataset_id);
+        const response = await axios.get(
+          `${apiBaseUrl}/img_eda/${dataset.dataset_id}`
+        );
         console.log(response.data);
         console.log('API response:', response.data['column_details']);
         if (response.data && response.data["class_details"]) {
@@ -112,7 +139,7 @@ function EDA() {
     };
 
     try {
-      const response = await axios.post(process.env.REACT_APP_PREPROCESSING_URL, payload);
+      const response = await axios.post(preprocessingUrl, payload);
       console.log("Preprocessing response:", response.data);
       // Handle the response as needed
     } catch (error) {

@@ -7,7 +7,7 @@ import {
   Button as ReactStrapButton,
   Alert,
 } from "reactstrap";
-import { Link } from "react-router-dom"; // Import Link from react-router-dom
+import { Link, useNavigate } from "react-router-dom"; // Import Link from react-router-dom
 import "../assets/css/paper-dashboard.css";
 import axios from "axios";
 import {
@@ -26,11 +26,18 @@ import {
 
 function UploadData() {
   const fileInput = useRef(null);
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
   const [dataSets, setDataSets] = useState([]);
   const [uploadingDataset, setUploadingDataset] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
+
+  const apiBaseUrl =
+    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+  const getAllDatasetsUrl =
+    process.env.REACT_APP_GET_ALL_DATASETS_URL ||
+    `${apiBaseUrl}/getDatasets`;
 
   const [query, setQuery] = useState("");
   const [datasets, setDatasets] = useState([]);
@@ -49,7 +56,7 @@ function UploadData() {
         try {
           console.log("Fetching datasets for query:", query, "source:", source);
           const res = await axios.get(
-            `http://localhost:5000/search?query=${encodeURIComponent(query)}&source=${source}`,
+            `${apiBaseUrl}/search?query=${encodeURIComponent(query)}&source=${source}`,
             {
               cancelToken: newCancelToken.token,
             }
@@ -81,7 +88,7 @@ function UploadData() {
 
   const downloadDataset = async (dataset_name) => {
     try {
-      const response = await axios.post("http://localhost:5000/download", {
+      const response = await axios.post(`${apiBaseUrl}/download`, {
         dataset_name,
         source,
       }, {
@@ -119,7 +126,7 @@ function UploadData() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     axios
-      .post("http://127.0.0.1:5000/storeDataset", formData, {
+      .post(`${apiBaseUrl}/storeDataset`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -128,7 +135,7 @@ function UploadData() {
         console.log(res);
         setSelectedFile(file);
         axios
-          .get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+          .get(getAllDatasetsUrl)
           .then((res) => {
             console.log(res);
             setDataSets(res.data.dataset_list);
@@ -164,7 +171,7 @@ function UploadData() {
       formData.append("filesize", data.length);
 
       await axios
-        .post("http://127.0.0.1:5000/storeDataset", formData, {
+        .post(`${apiBaseUrl}/storeDataset`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -174,7 +181,7 @@ function UploadData() {
         });
 
       axios
-        .get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+        .get(getAllDatasetsUrl)
         .then((res) => {
           console.log(res);
           setDataSets(res.data.dataset_list);
@@ -192,7 +199,7 @@ function UploadData() {
 
   useEffect(() => {
     axios
-      .get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+      .get(getAllDatasetsUrl)
       .then((res) => {
         console.log(res);
         setDataSets(res.data.dataset_list);
@@ -475,7 +482,16 @@ function UploadData() {
                     <TableCell>{dataSet.time}</TableCell>
                     <TableCell>
                       {" "}
-                      <Button variant="contained"> Select </Button>{" "}
+                      <Button
+                        variant="contained"
+                        onClick={() =>
+                          navigate("/eda", {
+                            state: { datasetId: dataSet.dataset_id },
+                          })
+                        }
+                      >
+                        Select
+                      </Button>{" "}
                     </TableCell>
                   </TableRow>
                 ))}

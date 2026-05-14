@@ -1,4 +1,4 @@
-from flask import Blueprint, send_file
+from flask import Blueprint, send_file, jsonify
 from mongoDB import db
 
 import os
@@ -10,18 +10,46 @@ from mongoDB import db
 
 getDatasets = Blueprint('getDatasets', __name__)
 
+def resolve_dataset_path(dataset_id, dataset_type, dataset_info=None):
+    dataset_path = None
+    dataset_type = dataset_type or 'text'
+
+    if dataset_info:
+        dataset_path = dataset_info.get('dataset_path')
+        dataset_type = dataset_info.get('dataset_type', dataset_type)
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        project_path = os.getenv('PROJECT_PATH', '')
+        extension = 'zip' if dataset_type == 'image' else 'csv'
+        dataset_path = os.path.join(project_path, 'Datasets', f'{dataset_id}.{extension}')
+
+    return dataset_path, dataset_type
+
 @getDatasets.route('/getDatasets')
 def getDatasetList():
     # read all files from Datasets folder
     # return list of files
     collection = db['Datasets']
 
-    dataset_list = collection.find({})
-    dataset_list = list(dataset_list)
-    for i in range(len(dataset_list)):
-        dataset_list[i]['_id'] = str(dataset_list[i]['_id'])
-        # dataset_list[i]['time'] = str(dataset_list[i]['time'])
-    return {'dataset_list': dataset_list}
+    dataset_list = list(collection.find({}))
+    filtered_list = []
+
+    for dataset in dataset_list:
+        dataset_id = dataset.get('dataset_id')
+        dataset_type = dataset.get('dataset_type', 'text')
+        dataset_path, resolved_type = resolve_dataset_path(
+            dataset_id,
+            dataset_type,
+            dataset_info=dataset
+        )
+
+        if dataset_path and os.path.exists(dataset_path):
+            dataset['_id'] = str(dataset['_id'])
+            dataset['dataset_path'] = dataset_path
+            dataset['dataset_type'] = resolved_type
+            filtered_list.append(dataset)
+
+    return {'dataset_list': filtered_list}
 
 @getDatasets.route('/getDatasetInfo/<dataset_id>')
 def getDatasetInfo(dataset_id):
@@ -33,12 +61,16 @@ def getDatasetInfo(dataset_id):
 def getDataset(dataset_id, dataset_type):
     # read file from Datasets folder
     # return file
-    if dataset_type == 'text':
-        dataset_path = './Datasets/'+dataset_id+'.csv'
-    elif dataset_type == 'image':
-        dataset_path = './Datasets/'+dataset_id+'.zip'
-    # dataset_file = open(dataset_path + '/' + dataset_name)
-    # print(dataset_path)
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    dataset_path, _ = resolve_dataset_path(
+        dataset_id,
+        dataset_type,
+        dataset_info=dataset_info
+    )
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        return jsonify({'message': 'Dataset file not found'}), 404
+
     return send_file(dataset_path)
 
 # @getDatasets.route('/getDatasets/<dataset_id>/file')

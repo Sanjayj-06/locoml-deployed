@@ -7,6 +7,7 @@ from PIL import Image
 import io
 import zipfile
 from datasets import load_from_disk
+from mongoDB import db
 
 img_preprocess = Blueprint('img_preprocess', __name__)
 
@@ -58,8 +59,16 @@ def get_dataset_splits(dataset_dict_path):
 
 @img_preprocess.route('/img_preprocess/<dataset_id>', methods=['GET'])
 def preprocessDataset(dataset_id):
-    dataset_path = f'./Datasets/{dataset_id}.zip'
-    extract_to = f'./ExtractedDatasets/{dataset_id}'
+    dataset_path = None
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    if dataset_info:
+        dataset_path = dataset_info.get('dataset_path')
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        project_path = os.getenv('PROJECT_PATH', '')
+        dataset_path = os.path.join(project_path, 'Datasets', f'{dataset_id}.zip')
+
+    extract_to = os.path.join(os.getenv('PROJECT_PATH', ''), 'ExtractedDatasets', dataset_id)
 
     try:
         # Extract dataset

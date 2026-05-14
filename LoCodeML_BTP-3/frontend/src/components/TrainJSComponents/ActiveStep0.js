@@ -47,9 +47,17 @@ function ActiveStep0(props) {
   const [modelName, setModelName] = React.useState("");
   const [selectedDatasetType, setSelectedDatasetType] = React.useState("");
 
+  const apiBaseUrl =
+    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+  const getAllDatasetsUrl =
+    process.env.REACT_APP_GET_ALL_DATASETS_URL ||
+    `${apiBaseUrl}/getDatasets`;
+  const getDatasetUrl =
+    process.env.REACT_APP_GET_DATASET_URL || `${apiBaseUrl}/getDatasets/`;
+
   useEffect(() => {
     axios
-      .get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+      .get(getAllDatasetsUrl)
       .then((response) => {
         console.log(response.data);
         setDatasetList(response.data.dataset_list);
@@ -65,7 +73,7 @@ function ActiveStep0(props) {
     const datasetType = selectedDataset?.dataset_type || '';
     
     axios
-      .get(process.env.REACT_APP_GET_DATASET_URL + selectedDatasetID + "/" + datasetType)
+      .get(`${getDatasetUrl}${selectedDatasetID}/${datasetType}`)
       .then((response) => {
         setSelectedDatasetContents(response.data);
       })

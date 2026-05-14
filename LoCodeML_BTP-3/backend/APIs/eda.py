@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request
 import pandas as pd
 import numpy as np
 import json
+import os
+from mongoDB import db
 
 eda = Blueprint('eda', __name__)
 
@@ -13,7 +15,17 @@ class CustomEncoder(json.JSONEncoder):
 
 @eda.route('/eda/<dataset_id>', methods=['GET'])
 def edaDataset(dataset_id):
-    dataset_path = './Datasets/' + dataset_id + '.csv'
+    dataset_path = None
+    dataset_type = 'text'
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    if dataset_info:
+        dataset_path = dataset_info.get('dataset_path')
+        dataset_type = dataset_info.get('dataset_type', 'text')
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        project_path = os.getenv('PROJECT_PATH', '')
+        extension = 'zip' if dataset_type == 'image' else 'csv'
+        dataset_path = os.path.join(project_path, 'Datasets', f'{dataset_id}.{extension}')
     
     try:
         df = pd.read_csv(dataset_path)

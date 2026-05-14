@@ -14,13 +14,22 @@ import glob
 import zipfile
 from datasets import load_from_disk
 import shutil  # Add this import at the top
+from mongoDB import db
 
 img_eda = Blueprint('img_eda', __name__)
 
 @img_eda.route('/img_eda/<dataset_id>', methods=['GET'])
 def edaDataset(dataset_id):
-    dataset_path = './Datasets/' + dataset_id + '.zip'
-    extract_to = './ExtractedDatasets/' + dataset_id
+    dataset_path = None
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    if dataset_info:
+        dataset_path = dataset_info.get('dataset_path')
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        project_path = os.getenv('PROJECT_PATH', '')
+        dataset_path = os.path.join(project_path, 'Datasets', f'{dataset_id}.zip')
+
+    extract_to = os.path.join(os.getenv('PROJECT_PATH', ''), 'ExtractedDatasets', dataset_id)
 
     try:
         print(extract_to, flush=True)
@@ -42,7 +51,7 @@ def edaDataset(dataset_id):
         dataset_info_path = os.path.join(extract_to, 'train', 'dataset_info.json')
         print(dataset_info_path, flush=True)
         
-        preprocessing_dir = './PreprocessingTasks'
+        preprocessing_dir = os.path.join(os.getenv('PROJECT_PATH', ''), 'PreprocessingTasks')
         os.makedirs(preprocessing_dir, exist_ok=True)
         preprocessing_file = os.path.join(preprocessing_dir, f'{dataset_id}.json')
         
@@ -66,7 +75,7 @@ def edaDataset(dataset_id):
 
 @img_eda.route('/preprocessing_tasks/<dataset_id>', methods=['GET'])
 def get_preprocessing_tasks(dataset_id):
-    preprocessing_file = os.path.join('./PreprocessingTasks', f'{dataset_id}.json')
+    preprocessing_file = os.path.join(os.getenv('PROJECT_PATH', ''), 'PreprocessingTasks', f'{dataset_id}.json')
     try:
         with open(preprocessing_file, 'r') as f:
             preprocessing_data = json.load(f)

@@ -50,9 +50,17 @@ function DataPreprocessing() {
     const classes = useStyles();
     const navigate = useNavigate();
 
+    const apiBaseUrl =
+        process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+    const getAllDatasetsUrl =
+        process.env.REACT_APP_GET_ALL_DATASETS_URL ||
+        `${apiBaseUrl}/getDatasets`;
+    const preprocessingUrl =
+        process.env.REACT_APP_PREPROCESSING_URL || `${apiBaseUrl}/preprocess`;
+
     useEffect(() => {
         // Get Datasets List
-        axios.get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+        axios.get(getAllDatasetsUrl)
             .then((response) => {
                 console.log(response.data);
                 let dataset_list = response.data['dataset_list'];
@@ -158,7 +166,7 @@ function DataPreprocessing() {
             console.error('API error:', error);
         } finally {
             // Send request to backend to begin preprocessing
-            axios.post(process.env.REACT_APP_PREPROCESSING_URL, {
+            axios.post(preprocessingUrl, {
                 dataset_id: selectedDataset["dataset_id"],
                 tasks: finalTasks
             })

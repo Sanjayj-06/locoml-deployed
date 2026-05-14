@@ -1,6 +1,8 @@
 import pandas as pd
 from flask import Blueprint, jsonify, request
 from pandas.api.types import is_numeric_dtype
+import os
+from mongoDB import db
 
 preprocess = Blueprint('preprocess', __name__)
 
@@ -8,7 +10,17 @@ preprocess = Blueprint('preprocess', __name__)
 @preprocess.route('/preprocess', methods=['POST'])
 def preprocessDataset():
     dataset_id = request.json['dataset_id']
-    dataset_path = './Datasets/' + dataset_id + '.csv'
+    dataset_path = None
+    dataset_type = 'text'
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    if dataset_info:
+        dataset_path = dataset_info.get('dataset_path')
+        dataset_type = dataset_info.get('dataset_type', 'text')
+
+    if not dataset_path or not os.path.exists(dataset_path):
+        project_path = os.getenv('PROJECT_PATH', '')
+        extension = 'zip' if dataset_type == 'image' else 'csv'
+        dataset_path = os.path.join(project_path, 'Datasets', f'{dataset_id}.{extension}')
 
     # Access finalTasks from request data
     finalTasks = request.json['tasks']
@@ -48,7 +60,11 @@ def preprocessDataset():
                 df[column] = (df[column] - df[column].mean()) / df[column].std()
                 normalized_columns.append(column)
 
-    processed_dataset_path = './processedDatasets/' + dataset_id + '.csv'
+    processed_dataset_path = os.path.join(
+        os.getenv('PROJECT_PATH', ''),
+        'processedDatasets',
+        f'{dataset_id}.csv'
+    )
     df.to_csv(processed_dataset_path, index=False)
 
     return jsonify({'message': 'Preprocessing completed successfully',
