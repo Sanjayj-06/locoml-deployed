@@ -126,8 +126,8 @@ def getTrainedModelFile(model_id, version):
     trained_model = collection.find_one({"model_id": model_id})
     # sort version array according to the date
     model_path = trained_model["versions"][version - 1]["saved_model_path"]
-    relative_path = model_path[model_path.find("Models") :]
-    cur_path = os.getenv("PROJECT_PATH") + relative_path
+    relative_path = model_path[model_path.find("Models") :].replace("\\", "/")
+    cur_path = os.path.join(os.getenv("PROJECT_PATH", "/app/"), relative_path)
     return send_file(cur_path)
 
 

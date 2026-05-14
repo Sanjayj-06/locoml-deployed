@@ -25,7 +25,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
 
   React.useEffect(() => {
     const fetchData = async () => {
-      axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + "/sentiment")
+      axios.get("/getTrainedModels/sentiment")
         .then((response) => {
           console.log("Received sentiment models: ", response.data);
           var sentimentModelMap = {};

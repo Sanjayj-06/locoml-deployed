@@ -181,7 +181,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
 
   React.useEffect(() => {
     const fetchData = async () => {
-      axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + "/classification")
+      axios.get("/getTrainedModels/classification")
         .then((response) => {
           console.log("Received classification models: ", response.data);
           var classificationModelMap = {};

@@ -38,7 +38,7 @@ The user may specify multiple preferences at once, such as a particular model ty
     - "Image Classification"
     - "Regression"
     - "Sentiment"
-- The "type" field of each node must match its role (e.g., "inputData", "preprocessing", "classification", "imageclassification").
+- The "type" field of each node must match its role (e.g., "inputData", "preprocessing"). For the model node, its "type" MUST strictly be the exact value of the `objective` field of the chosen model (e.g., if the chosen model's objective is "classification", the node type MUST be "classification", even if the model name contains the word "Regression").
 - For preprocessing nodes:
     - "preprocessingType" must be "csv" for text preprocessors, "zip" for image preprocessors.
     - "parameters" must be set according to the preprocessor and model requirements.

@@ -23,7 +23,7 @@ function ModelDetails() {
         //     setLoading(false);
         // }, 1000);
         // setModelDetails(JSON.parse(localStorage.getItem("modelDetails")));
-        axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + '/' + model_id)
+        axios.get("/getTrainedModels/" + model_id)
             .then(async (response) => {
                 // if(response.data) {
                 //     localStorage.setItem("modelDetails", JSON.stringify(response.data))

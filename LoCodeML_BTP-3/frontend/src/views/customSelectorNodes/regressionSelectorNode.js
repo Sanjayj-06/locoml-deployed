@@ -179,7 +179,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
 
   React.useEffect(() => {
     const fetchData = async () => {
-      axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + "/regression")
+      axios.get("/getTrainedModels/regression")
         .then((response) => {
           console.log("Received regression models: ", response.data);
           var regressionModelMap = {};
