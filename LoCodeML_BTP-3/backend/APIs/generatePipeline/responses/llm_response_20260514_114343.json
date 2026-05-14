@@ -1,0 +1,75 @@
+{
+  "timestamp": "20260514_114343",
+  "response": {
+    "Edges": [
+      {
+        "id": "dndedge_0",
+        "source": "dndnode_0",
+        "target": "dndnode_1"
+      },
+      {
+        "id": "dndedge_1",
+        "source": "dndnode_1",
+        "target": "dndnode_2"
+      },
+      {
+        "id": "dndedge_2",
+        "source": "dndnode_2",
+        "target": "dndnode_3"
+      },
+      {
+        "id": "dndedge_3",
+        "source": "dndnode_3",
+        "target": "dndnode_4"
+      }
+    ],
+    "Nodes": [
+      {
+        "id": "dndnode_0",
+        "data": {
+          "label": "Inputs",
+          "entity": "Pass-Fail Data.csv"
+        },
+        "type": "inputData"
+      },
+      {
+        "id": "dndnode_1",
+        "data": {
+          "label": "Preprocessing",
+          "entity": "Drop Duplicate Rows",
+          "parameters": null,
+          "preprocessingType": "csv"
+        },
+        "type": "preprocessing"
+      },
+      {
+        "id": "dndnode_2",
+        "data": {
+          "label": "Preprocessing",
+          "entity": "Interpolate Missing Values",
+          "parameters": null,
+          "preprocessingType": "csv"
+        },
+        "type": "preprocessing"
+      },
+      {
+        "id": "dndnode_3",
+        "data": {
+          "label": "Preprocessing",
+          "entity": "Normalize Features",
+          "parameters": null,
+          "preprocessingType": "csv"
+        },
+        "type": "preprocessing"
+      },
+      {
+        "id": "dndnode_4",
+        "data": {
+          "label": "Classification",
+          "entity": "dup_e89de58b"
+        },
+        "type": "classification"
+      }
+    ]
+  }
+}

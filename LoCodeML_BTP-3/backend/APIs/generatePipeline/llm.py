@@ -1,58 +1,25 @@
-import requests
 import json
 import sys
 import re
 import os
 from datetime import datetime
 
+# Using the unified LLM service for ECOS adaptive routing
+from llm.llm_service import UnifiedLLMService
+
 class LLMService:
-    def __init__(self, api_key,
-                  model="deepseek-ai/DeepSeek-V3-0324"):
-        self.api_key = api_key
-        self.model = model
-        self.url = "https://api.hyperbolic.xyz/v1/chat/completions"
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+    def __init__(self, api_key=None, model=None):
+        # We now use the unified ECOS service which manages API keys and providers
+        self.unified_service = UnifiedLLMService()
 
     def call_llm(self, system_prompt=None):
         """Make API call to LLM service"""
-        print("[DEBUG] Preparing LLM API request...", file=sys.stderr)
-        
-        data = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": system_prompt
-                }
-            ],
-            "model": self.model,
-            "temperature": 0.1,
-            "top_p": 0.9
-        }
-        
-        print(f"[DEBUG] LLM Request - URL: {self.url}", file=sys.stderr)
-        print(f"[DEBUG] LLM Request - Data: {json.dumps(data, indent=2)}", file=sys.stderr)
+        print("[DEBUG] Preparing LLM API request via UnifiedService...", file=sys.stderr)
         
         try:
-            print("[DEBUG] Sending request to LLM API...", file=sys.stderr)
-            response = requests.post(self.url, headers=self.headers, json=data)
-            print(f"[DEBUG] LLM Response Status: {response.status_code}", file=sys.stderr)
-            
-            response_json = response.json()
-            print(f"[DEBUG] LLM Raw Response: {json.dumps(response_json, indent=2)}", file=sys.stderr)
-            
-            return response_json['choices'][0]['message']['content']
-            
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] LLM API request failed: {str(e)}", file=sys.stderr)
-            raise
-        except KeyError as e:
-            print(f"[ERROR] Unexpected LLM response format: {str(e)}", file=sys.stderr)
-            raise
+            return self.unified_service.generate_response(system_prompt=system_prompt)
         except Exception as e:
-            print(f"[ERROR] Unexpected error in LLM call: {str(e)}", file=sys.stderr)
+            print(f"[ERROR] LLM API request failed: {str(e)}", file=sys.stderr)
             raise
 
     def clean_response(self, response):

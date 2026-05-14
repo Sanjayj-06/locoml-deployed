@@ -36,8 +36,8 @@ WORKDIR /app/
 COPY --from=dependencies /venv /venv
 COPY . /app/
 
-# Ensure Kaggle package is installed
-RUN pip install --no-cache-dir kaggle
+# Ensure Kaggle package and Gemini API are installed
+RUN pip install --no-cache-dir kaggle google-generativeai
 
 # Set proper permissions for the application directory
 RUN chmod -R 755 /app/

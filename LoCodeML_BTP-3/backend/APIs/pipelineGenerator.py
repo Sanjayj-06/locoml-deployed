@@ -82,7 +82,7 @@ def _pipeline_validation_error(message, details=None, status_code=422):
     return jsonify(payload), status_code
 
 
-def _validate_pipeline_graph(pipeline_data, trained_models):
+def _validate_pipeline_graph(pipeline_data, trained_models, model_id_map):
     errors = []
 
     if not isinstance(pipeline_data, dict):
@@ -137,8 +137,7 @@ def _validate_pipeline_graph(pipeline_data, trained_models):
         errors.append("Pipeline must contain exactly one model node.")
     else:
         model_entity = model_nodes[0].get("data", {}).get("entity")
-        valid_model_ids = {model.get("model_id") for model in trained_models}
-        if model_entity not in valid_model_ids:
+        if model_entity not in model_id_map:
             errors.append(f"Selected model '{model_entity}' was not found in the database.")
 
     # Ensure the graph is a single linear chain.
@@ -238,7 +237,7 @@ def generate_pipeline():
                     "details": response_data.get("details", [])
                 }), 500
 
-            pipeline_errors = _validate_pipeline_graph(response_data.get("pipeline"), trained_models)
+            pipeline_errors = _validate_pipeline_graph(response_data.get("pipeline"), trained_models, model_id_map)
             if pipeline_errors:
                 print(f"[DEBUG] Pipeline validation errors: {pipeline_errors}", file=sys.stderr)
                 return _pipeline_validation_error(
