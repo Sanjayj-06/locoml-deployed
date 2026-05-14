@@ -99,6 +99,12 @@ def node_info():
         )
 
 
+    if isinstance(predictions, dict) and 'message' in predictions:
+        return _error_response(predictions['message'])
+
+    if isinstance(predictions, dict) and 'error' in predictions:
+        return _error_response(predictions['error'])
+
     predictions_df = pd.DataFrame(predictions)
     if predictions_df.empty:
         return _error_response(

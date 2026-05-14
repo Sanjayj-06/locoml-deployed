@@ -143,8 +143,7 @@ export default memo(({ id, data, isConnectable }) => {
         const formDataObject = Object.fromEntries(formData.entries());
         console.log(formDataObject);
 
-        // Upload to the server
-        axios.post(process.env.REACT_APP_MASTER_SERVER_GET_INPUT_FILE, formData, {
+        axios.post("http://localhost:5001/getFile", formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             }

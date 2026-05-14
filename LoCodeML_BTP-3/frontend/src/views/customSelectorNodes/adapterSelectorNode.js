@@ -60,7 +60,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const handleCodeSave = () => {
     console.log("Code to be saved:", code)
     try {
-      axios.post(process.env.REACT_APP_MASTER_SERVER_SAVE_ADAPTER_CODE, {
+      axios.post("http://localhost:5001/getAdapterCode", {
         adapter_code: code
       })
         .then((response) => {
@@ -79,7 +79,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
 
   const fetchDatasetDetails = () => {
     try {
-      axios.get(process.env.REACT_APP_MASTER_SERVER_GET_DATASET_DETAILS)
+      axios.get("http://localhost:5001/fetchDatasetDetails")
         .then((response) => {
           console.log(response.data.message);
           if (response.data.status === "error") {

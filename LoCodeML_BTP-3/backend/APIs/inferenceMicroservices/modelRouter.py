@@ -162,6 +162,16 @@ def inference_batch():
     else:
             model = model_data  # Fallback for older saved models
 
+    expected_features = []
+    if isinstance(model_info.get('input_schema'), list):
+        expected_features = [
+            column.get('column_name')
+            for column in model_info['input_schema']
+            if isinstance(column, dict) and column.get('column_name')
+        ]
+
+    target_column = model_info.get('target_column')
+
     
     if objective.lower() == "imageclassification":
         model.eval()
@@ -224,6 +234,17 @@ def inference_batch():
     user_input = pd.DataFrame(dataset)
     user_input.columns = user_input.iloc[0]
     user_input = user_input.drop(user_input.index[0])
+
+    if expected_features:
+        missing_columns = [column for column in expected_features if column not in user_input.columns]
+        if missing_columns:
+            return jsonify({
+                'message': f"Missing required input columns for inference: {', '.join(missing_columns)}"
+            }), 400
+
+        user_input = user_input.reindex(columns=expected_features)
+    elif isinstance(target_column, str) and target_column in user_input.columns:
+        user_input = user_input.drop(columns=[target_column])
 
     # print("HERE WE ARE", user_input.head(20))
 

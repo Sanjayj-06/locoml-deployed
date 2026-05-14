@@ -190,7 +190,7 @@ function Inference() {
 
         const callMaster = async () => {
             try {
-                const response = await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
+                const response = await axios.post("http://localhost:5001/nodeInfo", {
                     nodes: nodes,
                     edges: edges
                 });
@@ -400,7 +400,7 @@ function Inference() {
     const handleSavePipeline = async (savedPipelineName) => {
         setSaveButtonText("Saving pipeline...");
         setIsSaveDialogOpen(false);
-        await axios.post(process.env.REACT_APP_SAVE_PIPELINE, {
+        await axios.post("http://localhost:5005/savePipeline", {
             nodes: nodes,
             edges: edges,
             pipeline_name: savedPipelineName,
