@@ -22,9 +22,16 @@ import { Card, CardHeader, CardBody, Row, Col } from "reactstrap";
 
 const MapWrapper = () => {
   const mapRef = React.useRef(null);
-  React.useEffect(() => {
-    let google = window.google;
-    let map = mapRef.current;
+  const [mapError, setMapError] = React.useState("");
+
+  const initializeMap = React.useCallback(() => {
+    const google = window.google;
+    const mapNode = mapRef.current;
+
+    if (!google?.maps || !mapNode) {
+      return;
+    }
+
     let lat = "40.748817";
     let lng = "-73.985428";
     const myLatlng = new google.maps.LatLng(lat, lng);
@@ -166,7 +173,7 @@ const MapWrapper = () => {
       ],
     };
 
-    map = new google.maps.Map(map, mapOptions);
+    const map = new google.maps.Map(mapNode, mapOptions);
 
     const marker = new google.maps.Marker({
       position: myLatlng,
@@ -186,7 +193,56 @@ const MapWrapper = () => {
     google.maps.event.addListener(marker, "click", function () {
       infowindow.open(map, marker);
     });
-  });
+  }, []);
+
+  React.useEffect(() => {
+    if (window.google?.maps) {
+      initializeMap();
+      return;
+    }
+
+    const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      setMapError("Google Maps API key is not configured.");
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[data-google-maps="true"]'
+    );
+
+    const onLoad = () => initializeMap();
+    const onError = () => setMapError("Failed to load Google Maps API.");
+
+    if (existingScript) {
+      existingScript.addEventListener("load", onLoad);
+      existingScript.addEventListener("error", onError);
+
+      return () => {
+        existingScript.removeEventListener("load", onLoad);
+        existingScript.removeEventListener("error", onError);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMaps = "true";
+    script.addEventListener("load", onLoad);
+    script.addEventListener("error", onError);
+    document.head.appendChild(script);
+
+    return () => {
+      script.removeEventListener("load", onLoad);
+      script.removeEventListener("error", onError);
+    };
+  }, [initializeMap]);
+
+  if (mapError) {
+    return <div style={{ padding: "1rem" }}>{mapError}</div>;
+  }
+
   return (
     <>
       <div style={{ height: `100%` }} ref={mapRef}></div>

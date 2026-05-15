@@ -31,7 +31,7 @@ function CustomTabPanel(props) {
         >
             {value === index && (
                 <Box sx={{ p: 3 }}>
-                    <Typography>{children}</Typography>
+                    <Box>{children}</Box>
                 </Box>
             )}
         </div>
@@ -199,7 +199,7 @@ function ModelInfoComponent(props) {
                     backgroundColor: "transparent",
                 }}
             >
-                <Typography>
+                <Box>
                     <Row style={{ marginBottom: "0.5rem" }}>
                         <Col>
                             Dataset: {modelDetails.dataset_id}
@@ -239,7 +239,7 @@ function ModelInfoComponent(props) {
                             Version Number: 1
                         </Col>
                     </Row>
-                </Typography>
+                </Box>
             </Paper>
             <Row>
                 <Col>

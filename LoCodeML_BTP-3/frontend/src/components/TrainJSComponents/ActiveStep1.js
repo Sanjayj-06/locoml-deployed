@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import InputLabel from '@mui/material/InputLabel';
@@ -47,7 +48,7 @@ function ActiveStep1(props) {
     return (
         <>
             <div style={{ marginTop: "1.5rem" }}>
-                <Typography>
+                <Box>
                     <Row className="mb-3">
                         <Col md="2" style={{ marginTop: "1rem" }}>
                             Optimization Objective:
@@ -279,7 +280,7 @@ function ActiveStep1(props) {
                             </FormControl>
                         </Col>
                     </Row>
-                </Typography>
+                </Box>
             </div>
         </>
     )

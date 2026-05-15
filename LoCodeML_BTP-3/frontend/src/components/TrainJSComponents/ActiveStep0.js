@@ -54,6 +54,7 @@ function ActiveStep0(props) {
     `${apiBaseUrl}/getDatasets`;
   const getDatasetUrl =
     process.env.REACT_APP_GET_DATASET_URL || `${apiBaseUrl}/getDatasets/`;
+  const normalizedGetDatasetUrl = getDatasetUrl.replace(/\/+$/, "");
 
   useEffect(() => {
     axios
@@ -68,12 +69,27 @@ function ActiveStep0(props) {
   }, []);
 
   useEffect(() => {
+    if (!selectedDatasetID) {
+      setSelectedDatasetContents(null);
+      return;
+    }
+
     // Find the dataset that matches the selected ID
-    const selectedDataset = datasetList.find(dataset => dataset.dataset_id === selectedDatasetID);
-    const datasetType = selectedDataset?.dataset_type || '';
+    const selectedDataset = datasetList.find(
+      (dataset) => dataset.dataset_id === selectedDatasetID
+    );
+    if (!selectedDataset) {
+      setSelectedDatasetContents(null);
+      return;
+    }
+
+    const datasetType = selectedDataset.dataset_type;
+    const requestUrl = datasetType
+      ? `${normalizedGetDatasetUrl}/${selectedDatasetID}/${datasetType}`
+      : `${normalizedGetDatasetUrl}/${selectedDatasetID}`;
     
     axios
-      .get(`${getDatasetUrl}${selectedDatasetID}/${datasetType}`)
+      .get(requestUrl)
       .then((response) => {
         setSelectedDatasetContents(response.data);
       })
@@ -139,7 +155,7 @@ function ActiveStep0(props) {
   return (
     <>
       <div style={{ marginTop: "1.5rem" }}>
-        <Typography>
+        <Box>
           <Row className="align-items-center mb-3">
             <Col md="2">Select Dataset:</Col>
             <Col md="6">
@@ -273,7 +289,7 @@ function ActiveStep0(props) {
               />
             </Col>
           </Row>
-        </Typography>
+        </Box>
       </div>
     </>
   );

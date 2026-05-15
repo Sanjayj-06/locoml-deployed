@@ -23,6 +23,7 @@ import ModelCard from "components/ModelInfo/ModelInfoCard";
 import { Row, Col, Button as ReactStrapButton } from "reactstrap";
 
 function TrainedModels() {
+    const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
     const [loading, setLoading] = React.useState(true);
     const [datasets, setDatasets] = React.useState({});
     const [trainedModels, setTrainedModels] = React.useState([{
@@ -46,7 +47,10 @@ function TrainedModels() {
     const [uploadingModel, setUploadingModel] = React.useState(false);
 
     React.useEffect(() => {
-        axios.get(process.env.REACT_APP_GET_ALL_DATASETS_URL)
+        const getAllDatasetsUrl =
+            process.env.REACT_APP_GET_ALL_DATASETS_URL || `${apiBaseUrl}/getDatasets`;
+
+        axios.get(getAllDatasetsUrl)
             .then((response) => {
                 console.log(response.data);
                 var dataset_map = {}
@@ -68,7 +72,7 @@ function TrainedModels() {
         }
 
         setLoading(true);
-        axios.get(`/getTrainedModels/${objective}`)
+        axios.get(`${apiBaseUrl}/getTrainedModels/${objective}`)
             .then(async (response) => {
                 console.log(response.data);
                 var temp = [];
@@ -269,15 +273,15 @@ function TrainedModels() {
                     <>
 
                         {
-                            modelChunks.map((modelChunk, index) => {
+                            modelChunks.map((modelChunk, chunkIndex) => {
 
                                 return (
-                                    <Row style={{ marginBottom: "1.5rem" }}>
+                                    <Row key={chunkIndex} style={{ marginBottom: "1.5rem" }}>
                                         {
-                                            modelChunk.map((model, index) => {
+                                            modelChunk.map((model, modelIndex) => {
                                                 return (
-                                                    <Col md="4">
-                                                        <ModelCard modelDetails={model} dataset_map={datasets} key={index} />
+                                                    <Col md="4" key={model.model_id || modelIndex}>
+                                                        <ModelCard modelDetails={model} dataset_map={datasets} />
                                                     </Col>
                                                 )
                                             })

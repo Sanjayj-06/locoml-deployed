@@ -107,7 +107,7 @@ function CustomTabPanel(props) {
         >
             {value === index && (
                 <Box sx={{ p: 3 }}>
-                    <Typography>{children}</Typography>
+                    <Box>{children}</Box>
                 </Box>
             )}
         </div>
@@ -283,7 +283,7 @@ const ModelCard = (props) => {
                     <Typography gutterBottom variant="h5" component="div" style={{ textAlign: "center", marginBottom: '1rem' }}>
                         {modelDetails.model_name}
                     </Typography>
-                    <Typography>
+                    <Box>
                         <Row style={{ marginBottom: '1rem' }}>
                             <Col md="6">Estimator Type:</Col>
                             <Col md="6" style={{ textAlign: "right" }}>{modelDetails.estimator_type}</Col>
@@ -321,7 +321,7 @@ const ModelCard = (props) => {
                                 <MuiButton onClick={() => { setDownloadModalOpen(true) }}>Download Model</MuiButton>
                             </Col>
                         </Row>
-                    </Typography>
+                    </Box>
                 </CardContent>
                 <CardActions style={{ justifyContent: 'space-between' }}>
                     <Button size="small" color="info" onClick={() => { window.location.href = "/models/" + modelDetails.model_id }}>
@@ -357,7 +357,7 @@ const ModelCard = (props) => {
                     >
                         {modelDetails.model_name} (ID: {modelDetails.model_id})
                     </Typography>
-                    <Typography>
+                    <Box>
                         <Row className="align-items-center mb-3">
                             <Col md="5">
                                 <Row className="align-items-center mb-3">
@@ -372,7 +372,7 @@ const ModelCard = (props) => {
                                         >
                                             {modelDetails.versions.map((version, index) => {
                                                 return (
-                                                    <option value={version.version_number}>{version.version_number}</option>
+                                                    <option key={version.version_number || index} value={version.version_number}>{version.version_number}</option>
                                                 );
                                             })}
                                         </select>
@@ -397,7 +397,7 @@ const ModelCard = (props) => {
                                         >
                                             {metricNames.map((metric, index) => {
                                                 return (
-                                                    <option value={metric}>{metric}</option>
+                                                    <option key={metric || index} value={metric}>{metric}</option>
                                                 );
                                             })}
                                         </select>
@@ -502,7 +502,7 @@ const ModelCard = (props) => {
                                 <Button size="large" color="success" disabled={downloadLoading} onClick={() => { DownloadModel() }}>Download</Button>
                             </Col>
                         </Row>
-                    </Typography>
+                    </Box>
                 </Box>
             </Modal>
 
@@ -520,7 +520,7 @@ const ModelCard = (props) => {
                     >
                         {modelDetails.model_name} (ID: {modelDetails.model_id})
                     </Typography>
-                    <Typography>
+                    <Box>
                         <Row className="align-items-center mb-3">
                             <Col md="5">
                                 <Row className="align-items-center mb-3">
@@ -535,7 +535,7 @@ const ModelCard = (props) => {
                                         >
                                             {modelDetails.versions.map((version, index) => {
                                                 return (
-                                                    <option value={version.version_number}>{version.version_number}</option>
+                                                    <option key={version.version_number || index} value={version.version_number}>{version.version_number}</option>
                                                 );
                                             })}
                                         </select>
@@ -560,7 +560,7 @@ const ModelCard = (props) => {
                                         >
                                             {metricNames.map((metric, index) => {
                                                 return (
-                                                    <option value={metric}>{metric}</option>
+                                                    <option key={metric || index} value={metric}>{metric}</option>
                                                 );
                                             })}
                                         </select>
@@ -646,7 +646,7 @@ const ModelCard = (props) => {
                                 <Button size="large" color="success" onClick={() => DeployModel()}>Deploy</Button>
                             </Col>
                         </Row>
-                    </Typography>
+                    </Box>
                 </Box>
             </Modal >
 
