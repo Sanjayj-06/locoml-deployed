@@ -28,6 +28,7 @@ import huggingFaceSelectorNode from "./customSelectorNodes/huggingFaceSelectorNo
 import SaveInferencePipelineDialog from "./SaveInferencePipelineDialog";
 import adapterSelectorNode from "./customSelectorNodes/adapterSelectorNode";
 import imageClassificationSelectorNode from "./customSelectorNodes/imageClassificationSelectorNode";
+import MetricsOverlay from "../components/pipeline/MetricsOverlay";
 
 const nodeTypes = {
     inputData: inputSelectorNode,
@@ -175,6 +176,7 @@ function Inference() {
 
     const [isPipelinePaused, setIsPipelinePaused] = useState(false);
     const [adapterNodeId, setAdapterNodeId] = useState(null);
+    const [hoveredNodeInfo, setHoveredNodeInfo] = useState(null);
 
     const handleOpenChatbot = () =>{
         setChatbotState(true);
@@ -289,6 +291,42 @@ function Inference() {
     const onDragOver = useCallback((event) => {
         event.preventDefault()
         event.dataTransfer.dropEffect = 'move'
+    }, []);
+
+    const handleNodeMouseEnter = useCallback((event, node) => {
+        const wrapperRect = reactFlowWrapper.current?.getBoundingClientRect();
+        const nodeElement = event?.currentTarget || event?.target?.closest?.('.react-flow__node');
+        const nodeRect = nodeElement?.getBoundingClientRect?.();
+
+        if (!wrapperRect || !nodeRect) {
+            setHoveredNodeInfo({
+                node,
+                position: {x: 0, y: 0},
+                nodeHeight: 0,
+                placement: 'above',
+            });
+            return;
+        }
+
+        const anchorPoint = {
+            x: nodeRect.left - wrapperRect.left + (nodeRect.width / 2),
+            y: nodeRect.top - wrapperRect.top,
+        };
+
+        setHoveredNodeInfo({
+            node,
+            position: anchorPoint,
+            nodeHeight: nodeRect.height,
+            placement: anchorPoint.y < 220 ? 'below' : 'above',
+        });
+    }, []);
+
+    const handleNodeMouseLeave = useCallback(() => {
+        setHoveredNodeInfo(null);
+    }, []);
+
+    const clearHoveredNode = useCallback(() => {
+        setHoveredNodeInfo(null);
     }, []);
 
     const onDrop = useCallback(
@@ -694,6 +732,9 @@ function Inference() {
                                         onInit={setReactFlowInstance}
                                         onDrop={onDrop}
                                         onDragOver={onDragOver}
+                                        onNodeMouseEnter={handleNodeMouseEnter}
+                                        onNodeMouseLeave={handleNodeMouseLeave}
+                                        onNodeDragStart={clearHoveredNode}
                                         nodeTypes={nodeTypes}
                                         fitView
                                         edgesUpdatable={!buttonLoading}
@@ -743,6 +784,11 @@ function Inference() {
                                         />
                                         <Background/>
                                         <Controls/>
+                                        <MetricsOverlay
+                                            hoveredNodeInfo={hoveredNodeInfo}
+                                            pipelineRunning={buttonLoading}
+                                            pipelinePaused={isPipelinePaused}
+                                        />
                                     </ReactFlow>
                                 </div>
                             </ReactFlowProvider>

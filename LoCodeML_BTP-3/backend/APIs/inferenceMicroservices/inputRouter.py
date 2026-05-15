@@ -15,6 +15,7 @@ from datasets import load_from_disk
 import base64
 from io import BytesIO
 from PIL import Image
+import psutil
 
 load_dotenv(dotenv_path="../../.env")
 env_path = os.getenv("PROJECT_PATH")
@@ -30,6 +31,13 @@ CORS(app)
 @app.route("/health", methods=["GET"])
 def health():
     return "OK"
+
+@app.route("/telemetry", methods=["GET"])
+def telemetry():
+    return jsonify({
+        "cpuUsage": psutil.cpu_percent(interval=None),
+        "memoryUsage": psutil.virtual_memory().percent
+    })
 
 
 @app.route('/input/getInferenceDataset', methods=['GET', 'POST'])

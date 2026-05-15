@@ -127,19 +127,15 @@ export default memo(({ id, data, isConnectable }) => {
     const handleUpload = (info) => {
         const file = info.file;
         setIsFileUploaded(file.name);
+        const datasetType = file.type === 'application/zip' ? 'zip' : 'csv';
 
         const formData = new FormData();
         formData.append('file', file);
         formData.append('filesize', file.size);
         formData.append('filename', file.name);
         formData.append('nodeid', id);
-        if (file.type === 'application/zip') {
-            formData.append('dataset_type', 'zip');
-        } else {
-            formData.append('dataset_type', 'csv');
-        }
+        formData.append('dataset_type', datasetType);
 
-        data.entity = formData;
         const formDataObject = Object.fromEntries(formData.entries());
         console.log(formDataObject);
 
@@ -148,6 +144,14 @@ export default memo(({ id, data, isConnectable }) => {
                 'Content-Type': 'multipart/form-data',
             }
         }).then(res => {
+            const datasetId = res?.data?.dataset_id || res?.data?.datasetId;
+            data.entity = {
+                dataset_id: datasetId,
+                dataset_type: datasetType,
+                filename: file.name,
+                filesize: file.size,
+                nodeid: id,
+            };
             console.log(res);
         }).catch(err => {
             console.log(err);

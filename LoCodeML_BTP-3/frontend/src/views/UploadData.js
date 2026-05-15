@@ -8,7 +8,7 @@ import {
   Alert,
 } from "reactstrap";
 import { Link, useNavigate } from "react-router-dom"; // Import Link from react-router-dom
-import "../assets/css/paper-dashboard.css";
+// Global Paper Dashboard styles are loaded once from `index.js` via SCSS.
 import axios from "axios";
 import {
   Table,

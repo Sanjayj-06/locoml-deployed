@@ -129,7 +129,12 @@ def csv_input(pipeline_id):
     # tell the master server to run this pipeline.
     output_data = requests.post(RUN_INFERENCE_PIPELINE_URL, json={'nodes': processed_data['nodes'], 'edges': processed_data['edges']})
     if output_data.status_code != 200:
-        return jsonify({"error": "Failed to run this pipeline"}), response.status_code
+        try:
+            payload = output_data.json()
+            message = payload.get("message") or payload.get("error") or "Failed to run this pipeline"
+        except Exception:
+            message = output_data.text or "Failed to run this pipeline"
+        return jsonify({"error": message}), output_data.status_code
     output_data.content.decode('utf8')  # this is returned in text/csv format by the server.
 
     return Response(

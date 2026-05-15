@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { makeStyles } from '@mui/styles';
 import { Row, Col, Card, CardBody, Button, CardHeader, CardTitle, Table, } from "reactstrap";
-import "../assets/css/paper-dashboard.css"
+// Global Paper Dashboard styles are loaded once from `index.js` via SCSS.
 import { LinearProgress, Typography } from "@mui/material";
 import { useNavigate } from 'react-router-dom';
 

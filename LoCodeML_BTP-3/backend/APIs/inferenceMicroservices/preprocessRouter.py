@@ -6,6 +6,7 @@ import os
 from flask_jsonpify import jsonpify
 from flask_cors import CORS
 from dotenv import load_dotenv
+import psutil
 
 load_dotenv(dotenv_path="../../.env")
 env_path = os.getenv("PROJECT_PATH")
@@ -21,6 +22,13 @@ CORS(app)
 @app.route('/health', methods=["GET"])
 def health():
     return "OK"
+
+@app.route("/telemetry", methods=["GET"])
+def telemetry():
+    return jsonify({
+        "cpuUsage": psutil.cpu_percent(interval=None),
+        "memoryUsage": psutil.virtual_memory().percent
+    })
 
 
 @app.route('/preprocess', methods=['POST'])

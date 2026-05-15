@@ -5,6 +5,7 @@ from flask_cors import CORS
 import nanoid
 import os
 import sys
+import psutil
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
@@ -44,6 +45,34 @@ def reset_globals():
     hasDatasetDetails = False
     preprocessing_tasks = {}  # Clear the preprocessing tasks
 
+
+def resolve_input_dataset(node):
+    entity = node.get('data', {}).get('entity')
+
+    if isinstance(entity, dict):
+        dataset_id = entity.get('dataset_id')
+        dataset_type_value = entity.get('dataset_type') or dataset_type
+        if dataset_id and dataset_type_value:
+            return dataset_id, dataset_type_value
+
+    cached_dataset_id = inputFiles.get(node.get('id'))
+    if cached_dataset_id and dataset_type:
+        return cached_dataset_id, dataset_type
+
+    return None, None
+
+
+def resolve_model_id(node):
+    entity = node.get('data', {}).get('entity')
+
+    if isinstance(entity, dict):
+        return entity.get('model_id') or entity.get('id') or entity.get('_id')
+
+    if isinstance(entity, str) and entity:
+        return entity
+
+    return node.get('data', {}).get('model_id')
+
 def create_query_string(url, args):
     # args is an immutable dictionary
     query_string = ""
@@ -55,11 +84,12 @@ def create_query_string(url, args):
 
 @app.route("/nodeInfo", methods=["POST"])
 def node_info():
-    global hasSentIntermediate, datasetDetails
+    global hasSentIntermediate, datasetDetails, dataset_type
     global nodeDetails
-    nodeDetails = request.json['nodes']
+    payload = request.get_json(silent=True) or {}
+    nodeDetails = payload.get('nodes', [])
     global edgeDetails
-    edgeDetails = request.json['edges']
+    edgeDetails = payload.get('edges', [])
     if not nodeDetails:
         return jsonify({"status": "error", "message": "No nodes found"}), 400
     if not edgeDetails:
@@ -74,6 +104,13 @@ def node_info():
             global adapterNodeId
             adapterNodeId = n['id']
             hasSentIntermediate = False
+
+        if n['data']['label'] == 'Inputs':
+            dataset_id_value, dataset_type_value = resolve_input_dataset(n)
+            if dataset_id_value and dataset_type_value:
+                inputFiles[n['id']] = dataset_id_value
+                global dataset_type
+                dataset_type = dataset_type_value
             
     for n in nodeDetails:
         for id in inputFiles:
@@ -137,6 +174,34 @@ def node_info():
     reset_globals()
 
     return predictions_df.to_csv(index=False), 200
+
+@app.route("/telemetry/<node_type>", methods=["GET"])
+def get_node_telemetry(node_type):
+    try:
+        node_type = node_type.lower()
+        if node_type == 'inputdata' or node_type == 'adapter':
+            url = "http://input_router:5002/telemetry"
+        elif node_type == 'preprocessing':
+            url = "http://preprocess_router:5003/telemetry"
+        elif node_type in ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']:
+            url = "http://model_router:5004/telemetry"
+        else:
+            return jsonify({
+                "cpuUsage": psutil.cpu_percent(interval=None),
+                "memoryUsage": psutil.virtual_memory().percent
+            })
+            
+        response = requests.get(url, timeout=2)
+        if response.status_code == 200:
+            return jsonify(response.json())
+    except Exception as e:
+        print(f"Telemetry error: {e}")
+        pass
+        
+    return jsonify({
+        "cpuUsage": psutil.cpu_percent(interval=None),
+        "memoryUsage": psutil.virtual_memory().percent
+    })
 
 @app.route("/resumePipeline", methods=["POST"])
 def resume_pipeline():
@@ -222,7 +287,12 @@ def get_file():
 
     inputFiles[nodeid] = dataset_id
 
-    return jsonify({"status": "success"}), 200
+    return jsonify({
+        "status": "success",
+        "dataset_id": dataset_id,
+        "dataset_type": dataset_type,
+        "nodeid": nodeid,
+    }), 200
 
 @app.route('/getAdapterCode', methods=['POST'])
 def get_adapter_code():
@@ -248,7 +318,13 @@ def execute(node, ip):
     # print(node['id'])
     op = None
     if node['data']['label'] == 'Inputs':
-        op = callInputRouter(node['data']['entity'], dataset_type)
+        dataset_id_value, dataset_type_value = resolve_input_dataset(node)
+        if not dataset_id_value or not dataset_type_value:
+            return {
+                "error": "No uploaded dataset was attached to the input node. Upload a dataset before running the pipeline.",
+                "status_code": 400,
+            }
+        op = callInputRouter(dataset_id_value, dataset_type_value)
     elif node['data']['label'] == 'Preprocessing':
         print("Helllo Nijesh this is preprocessing speaking",node['data'], flush=True)
         op = callPreprocessRouter(node['data'], ip)
@@ -256,7 +332,13 @@ def execute(node, ip):
         op = callAdapter(ip)
     elif node['data']['label'] == 'Classification' or node['data']['label'] == 'Regression' or node['data'][
         'label'] == 'Sentiment' or node['data']['label'] == 'Image Classification':
-        op = callModelRouter(node['data']['entity']['model_id'], ip)
+        model_id = resolve_model_id(node)
+        if not model_id:
+            return {
+                "error": f"No model is selected for the {node['data']['label']} node. Choose a model before running the pipeline.",
+                "status_code": 400,
+            }
+        op = callModelRouter(model_id, ip)
     elif node['data']['label'] == 'Huggingface':
         op = callModelRouterForHuggingFace(node['data']['model_name'], node['data']['task_name'],
                                            node['data']['candidate_labels'], ip)
@@ -341,12 +423,13 @@ def callInputRouter(dataset_id, dataset_type):
             'dataset_type': dataset_type
         })
         print(f"[DEBUG] Input router response status: {response.status_code}")
+        if response.status_code >= 400:
+            return {"error": response.json().get("error", response.text), "status_code": response.status_code}
         dataset = response.json()
-        # print(f"[DEBUG] Input router response data: {dataset}")
         return dataset
     except Exception as e:
         print(f"[ERROR] Error in receiving input: {str(e)}")
-        return None
+        return {"error": f"Input router error: {str(e)}", "status_code": 500}
 
 
 def callPreprocessRouter(task, dataset):
@@ -376,10 +459,13 @@ def callPreprocessRouter(task, dataset):
             'dataset': dataset,
             'task': task
         })
+        if response.status_code >= 400:
+            return {"error": response.json().get("error", response.text), "status_code": response.status_code}
         preProcessedDataset = response.json()
         return preProcessedDataset
     except Exception as e:
         print(e)
+        return {"error": f"Preprocess router error: {str(e)}", "status_code": 500}
 
 
 def callModelRouter(model_id, dataset):
@@ -400,9 +486,17 @@ def callModelRouter(model_id, dataset):
             'model_id': model_id,
             'preprocessing_tasks': preprocessing_tasks
         })
+        if response.status_code >= 400:
+            try:
+                payload = response.json()
+                message = payload.get('message') or payload.get('error') or response.text
+            except Exception:
+                message = response.text
+            return {"error": message, "status_code": response.status_code}
         return response.json()
     except Exception as e:
         print(e)
+        return {"error": f"Model router error: {str(e)}", "status_code": 500}
 
 def callModelRouterForHuggingFace(model_name, task_name, candidate_labels, dataset):
     model_port = 5004
@@ -422,9 +516,17 @@ def callModelRouterForHuggingFace(model_name, task_name, candidate_labels, datas
             'task_name': task_name,
             'candidate_labels': candidate_labels
         })
+        if response.status_code >= 400:
+            try:
+                payload = response.json()
+                message = payload.get('message') or payload.get('error') or response.text
+            except Exception:
+                message = response.text
+            return {"error": message, "status_code": response.status_code}
         return response.json()
     except Exception as e:
         print(e)
+        return {"error": f"Model router error: {str(e)}", "status_code": 500}
 
 def callAdapter(dataset):
     input_port = 5002
@@ -442,10 +544,13 @@ def callAdapter(dataset):
             'dataset': dataset,
             'adapterCode': adapterCode,
         })
+        if response.status_code >= 400:
+            return {"error": response.json().get("error", response.text), "status_code": response.status_code}
         dataset = response.json()
         return dataset
     except Exception as e:
         print("Error in recieving input: ", e)
+        return {"error": f"Adapter router error: {str(e)}", "status_code": 500}
 
 
 if __name__ == "__main__":
