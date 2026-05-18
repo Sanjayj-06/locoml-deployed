@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import Stepper from "@mui/material/Stepper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -11,8 +11,13 @@ import {
   LinearProgress,
   TableRow,
 } from "@mui/material";
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import axios from "axios";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Table as MuiTable, TableCell } from "@mui/material";
 import { makeStyles } from "@mui/styles";
 
@@ -55,6 +60,8 @@ function LinearProgressWithLabel(props) {
 // };
 
 function Train() {
+  const hasShownEntryPopup = useRef(false);
+  const [showEntryDialog, setShowEntryDialog] = React.useState(false);
   const [activeStep, setActiveStep] = React.useState(0);
   const [trainingMode, setTrainingMode] = React.useState("AutoML");
   const [modelType, setModelType] = React.useState("");
@@ -148,6 +155,11 @@ function Train() {
   // }, []);
 
   useEffect(() => {
+    if (!hasShownEntryPopup.current) {
+      setShowEntryDialog(true);
+      hasShownEntryPopup.current = true;
+    }
+
     axios
       .get("http://127.0.0.1:5000/getClassifierMap")
       .then((response) => {
@@ -241,6 +253,28 @@ function Train() {
 
   return (
     <div className="content">
+      <Dialog
+        open={showEntryDialog}
+        onClose={() => setShowEntryDialog(false)}
+        aria-labelledby="train-entry-dialog-title"
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <WarningAmberIcon sx={{ fontSize: 64, color: '#F6B23E' }} />
+          <Typography variant="h6" sx={{ mt: 2, fontWeight: 600 }}>
+            Do not leave this page
+          </Typography>
+          <Typography sx={{ mt: 1 }}>
+            Do not leave this page until you receive the success message
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button onClick={() => setShowEntryDialog(false)} variant="contained" color="primary">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Typography>
         <Row>
           <Col>
