@@ -265,7 +265,7 @@ function Dashboard() {
             <div className="content">
                 <Row>
                     <Col lg="3" md="6" sm="6">
-                        <Card className="card-stats">
+                        <Card className="card-stats" style={{ minHeight: '235px' }}>
                             <CardBody>
                                 <Row>
                                     <Col md="4" xs="5">
@@ -354,7 +354,21 @@ function Dashboard() {
                                     <Col md="8" xs="7">
                                         <div className="numbers">
                                             <p className="card-category">Most Popular Model</p>
-                                            <CardTitle tag="p">{systemStats["most_popular_model"]}</CardTitle>
+                                            <CardTitle
+                                                tag="p"
+                                                title={systemStats["most_popular_model"]}
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    lineHeight: 1.2,
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    marginBottom: 0,
+                                                    maxWidth: '100%'
+                                                }}
+                                            >
+                                                {systemStats["most_popular_model"]}
+                                            </CardTitle>
                                             <p />
                                         </div>
                                     </Col>

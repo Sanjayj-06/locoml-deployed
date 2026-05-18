@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
-import { List, ListItem, ListItemIcon, ListItemText, Collapse, Button, Avatar } from "@mui/material";
+import { List, ListItem, ListItemIcon, ListItemText, Collapse } from "@mui/material";
 import { ExpandLess, ExpandMore, Folder, InsertDriveFile } from "@mui/icons-material";
 import Description from '@mui/icons-material/Description';
 import DatasetLinkedOutlinedIcon from '@mui/icons-material/DatasetLinkedOutlined';
@@ -33,9 +33,9 @@ function InferenceNavbar(props) {
     }
 
     return (
-        <List component="nav" sx={{ marginTop: '63px', width: '29.6%', color: 'black', backgroundColor: 'white', height: '91vh', overflow: 'auto', display:'flex', flexDirection:'column' }}>
+        <List component="nav" sx={{ marginTop: '63px', width: '29.6%', color: 'black', backgroundColor: 'white', height: '91vh', overflow: 'auto', pb: 2 }}>
 
-            <ListItem button onClick={togglePresets}>
+            <ListItem button onClick={togglePresets} sx={{ mt: 1, mb: 1 }}>
                 <ListItemIcon>
                     <Folder />
                 </ListItemIcon>
@@ -114,7 +114,7 @@ function InferenceNavbar(props) {
                 </List>
             </Collapse>
 
-            <ListItem button onClick={toggleCustomPipelines}>
+            <ListItem button onClick={toggleCustomPipelines} sx={{ mt: 1, mb: 1 }}>
                 <ListItemIcon>
                     <Folder />
                 </ListItemIcon>
@@ -122,9 +122,9 @@ function InferenceNavbar(props) {
                 {customPipelinesOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItem>
 
-            <Collapse in={customPipelinesOpen} timeout="auto" unmountOnExit>
+            <Collapse in={customPipelinesOpen} timeout="auto" unmountOnExit sx={{ mb: 2 }}>
 
-                <List component="div" sx={{ pl: 2, pr: 4 }}>
+                <List component="div" sx={{ pl: 2, pr: 4, mb: 1 }}>
                     <ListItem onDragStart={(event) => onDragStart(event, "Inputs", "inputData")} draggable sx={{
                         borderRadius: 35,
                         backgroundColor: "#d7e3fc",
@@ -144,7 +144,7 @@ function InferenceNavbar(props) {
 
                 </List>
 
-                <List component="div" disablePadding sx={{ pl: 2, pr: 4 }}>
+                <List component="div" disablePadding sx={{ pl: 2, pr: 4, mb: 1 }}>
                     <ListItem onDragStart={(event) => onDragStart(event, "Preprocessing", "preprocessing")} draggable sx={{
                         borderRadius: 35,
                         backgroundColor: "#efc7e5",
@@ -163,7 +163,7 @@ function InferenceNavbar(props) {
                     </ListItem>
                 </List>
 
-                <List component="div" disablePadding sx={{ pl: 2, pr: 4 }}>
+                <List component="div" disablePadding sx={{ pl: 2, pr: 4, mb: 1 }}>
                     <ListItem onDragStart={(event) => onDragStart(event, "Adapter", "adapter")} draggable sx={{
                         borderRadius: 35,
                         backgroundColor: "#f5d4ba",
@@ -183,16 +183,16 @@ function InferenceNavbar(props) {
                 </List>
 
                 {/* Models */}
-                <ListItem button onClick={toggleModels} sx={{ pl: 4 }}>
+                <ListItem button onClick={toggleModels} sx={{ pl: 4, mt: 1, mb: 1 }}>
                     <ListItemIcon>
                         <Folder />
                     </ListItemIcon>
                     <ListItemText primary="Models" />
                     {modelsOpen ? <ExpandLess /> : <ExpandMore />}
                 </ListItem>
-                <Collapse in={modelsOpen} timeout="auto" unmountOnExit>
+                <Collapse in={modelsOpen} timeout="auto" unmountOnExit sx={{ mb: 2 }}>
                     <List component="div" disablePadding>
-                        <List component="div" disablePadding sx={{ pl: 4, pr: 4 }}>
+                        <List component="div" disablePadding sx={{ pl: 4, pr: 4, mb: 1 }}>
                             <ListItem onDragStart={(event) => onDragStart(event, "Classification", "classification")} draggable sx={{
                                 borderRadius: 35,
                                 pl: 2,
@@ -211,7 +211,7 @@ function InferenceNavbar(props) {
                             </ListItem>
                         </List>
 
-                        <List component="div" disablePadding sx={{ pl: 4, pr: 4 }}>
+                        <List component="div" disablePadding sx={{ pl: 4, pr: 4, mb: 1 }}>
                             <ListItem onDragStart={(event) => onDragStart(event, "Regression", "regression")} draggable sx={{
                                 borderRadius: 35,
                                 pl: 2,
@@ -230,7 +230,7 @@ function InferenceNavbar(props) {
                             </ListItem>
                         </List>
 
-                        <List component="div" disablePadding sx={{ pl: 4, pr: 4 }}>
+                        <List component="div" disablePadding sx={{ pl: 4, pr: 4, mb: 1 }}>
                             <ListItem onDragStart={(event) => onDragStart(event, "Sentiment", "sentiment")} draggable sx={{
                                 borderRadius: 35,
                                 pl: 2,
@@ -249,7 +249,7 @@ function InferenceNavbar(props) {
                             </ListItem>
                         </List>
 
-                        <List component="div" disablePadding sx={{ pl: 4, pr: 4 }}>
+                        <List component="div" disablePadding sx={{ pl: 4, pr: 4, mb: 1 }}>
                             <ListItem onDragStart={(event) => onDragStart(event, "ImageClassification", "imageclassification")} draggable sx={{
                                 borderRadius: 35,
                                 pl: 2,
@@ -289,30 +289,6 @@ function InferenceNavbar(props) {
                 </Collapse >
 
             </Collapse>
-            <ListItem sx={{ marginTop: 'auto' }}>
-            <Button
-                variant="contained"
-                sx={{
-                    width: '90%',
-                    bgcolor:'#3345dd',
-                    ml: '5%',
-                    color: 'white',
-                    borderColor: 'gray',
-                    gap: '8%',
-                    textTransform: 'none',
-                }}
-                size="large"
-                onClick={() => props.handleOpen()}
-                >
-                <Avatar alt="Bot Avatar" sx={{ width: 35, height: 35 }}>
-                    <img
-                        src={require('./../assets/img/chatbotChat.jpg')}
-                        alt="Chatbot"
-                    />
-                </Avatar>
-                    Pipeline LLM
-                </Button>
-            </ListItem>
         </List >
     )
 }

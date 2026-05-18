@@ -745,6 +745,13 @@ function Inference() {
                                         elementsSelectable={!buttonLoading}
                                     >
                                         <Panel position="top-right">
+                                            <Button onClick={handleOpenChatbot} variant="contained" style={{
+                                                borderRadius: 36,
+                                                backgroundColor: "#3345dd",
+                                                padding: "18px 24px",
+                                                fontSize: "18px",
+                                                marginRight: "10px"
+                                            }}>Pipeline LLM</Button>
                                             <Button onClick={handleSaveDialogOpen} variant="contained"
                                                     disabled={saveButtonText !== defaultSaveText} style={{
                                                 borderRadius: 36,
