@@ -3,6 +3,7 @@ import nanoid
 import os
 import sys
 import datetime
+import time
 from flask_jsonpify import jsonpify
 import pandas as pd
 from dotenv import load_dotenv
@@ -114,7 +115,13 @@ def adaptInferenceDataset():
     output_df = df.copy()
 
     # execute the custom code
-    exec_globals = {'output_df': output_df, 'df': df}
+    exec_globals = {
+        'output_df': output_df, 
+        'df': df,
+        'start_ts': time.time(),
+        'time': time,
+        'pd': pd
+    }
     exec_locals = {}
     exec(final_code, exec_globals, exec_locals)
     # drop the text column from output_df
