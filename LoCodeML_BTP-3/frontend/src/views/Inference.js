@@ -29,6 +29,7 @@ import SaveInferencePipelineDialog from "./SaveInferencePipelineDialog";
 import adapterSelectorNode from "./customSelectorNodes/adapterSelectorNode";
 import imageClassificationSelectorNode from "./customSelectorNodes/imageClassificationSelectorNode";
 import MetricsOverlay from "../components/pipeline/MetricsOverlay";
+import PreRunEvaluationDashboard, { buildEvaluationSignature } from "../components/pipeline/PreRunEvaluationDashboard";
 
 const nodeTypes = {
     inputData: inputSelectorNode,
@@ -177,6 +178,20 @@ function Inference() {
     const [isPipelinePaused, setIsPipelinePaused] = useState(false);
     const [adapterNodeId, setAdapterNodeId] = useState(null);
     const [hoveredNodeInfo, setHoveredNodeInfo] = useState(null);
+    const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
+    const [isPreRunEvaluationComplete, setIsPreRunEvaluationComplete] = useState(false);
+    const [evaluatedPipelineSignature, setEvaluatedPipelineSignature] = useState("");
+
+    React.useEffect(() => {
+        if (!isPreRunEvaluationComplete || !evaluatedPipelineSignature) {
+            return;
+        }
+
+        const currentSignature = buildEvaluationSignature(nodes, edges);
+        if (currentSignature !== evaluatedPipelineSignature) {
+            setIsPreRunEvaluationComplete(false);
+        }
+    }, [nodes, edges, evaluatedPipelineSignature, isPreRunEvaluationComplete]);
 
     const handleOpenChatbot = () =>{
         setChatbotState(true);
@@ -185,7 +200,24 @@ function Inference() {
         setChatbotState(false);
     }
 
-    const handleRun = () => {
+    const handleOpenEvaluation = () => {
+        setIsEvaluationDialogOpen(true);
+    }
+
+    const handleCloseEvaluation = () => {
+        setIsEvaluationDialogOpen(false);
+    }
+
+    const handleEvaluationComplete = (signature) => {
+        setEvaluatedPipelineSignature(signature);
+        setIsPreRunEvaluationComplete(true);
+    }
+
+    const handleRoutingUpdate = (updatedNodes) => {
+        setNodes(updatedNodes);
+    }
+
+    const executePipelineRun = () => {
         console.log("Nodes", nodes)
         console.log("Edges", edges)
         setButtonLoading(true);
@@ -239,6 +271,15 @@ function Inference() {
         };
 
         callMaster();
+    };
+
+    const handleRun = () => {
+        if (!isPreRunEvaluationComplete) {
+            setIsEvaluationDialogOpen(true);
+            return;
+        }
+
+        executePipelineRun();
     };
 
     const handleClosePopup = () => {
@@ -667,6 +708,14 @@ function Inference() {
                             handleClose={handleCloseChatbot} 
                             onSendMessage={handleChatbotMessage}
                         />
+                        <PreRunEvaluationDashboard
+                            open={isEvaluationDialogOpen}
+                            nodes={nodes}
+                            edges={edges}
+                            onClose={handleCloseEvaluation}
+                            onApplyRouting={handleRoutingUpdate}
+                            onEvaluationComplete={handleEvaluationComplete}
+                        />
                         <Modal 
                             open={open} 
                             onClose={() => setOpen(false)} 
@@ -745,6 +794,14 @@ function Inference() {
                                         elementsSelectable={!buttonLoading}
                                     >
                                         <Panel position="top-right">
+                                            <Button onClick={handleOpenEvaluation} variant="outlined" style={{
+                                                borderRadius: 36,
+                                                borderColor: "#3345dd",
+                                                color: "#3345dd",
+                                                padding: "18px 24px",
+                                                fontSize: "18px",
+                                                marginRight: "10px"
+                                            }}>Evaluate Model</Button>
                                             <Button onClick={handleOpenChatbot} variant="contained" style={{
                                                 borderRadius: 36,
                                                 backgroundColor: "#3345dd",
@@ -766,7 +823,7 @@ function Inference() {
                                                         padding: "18px 36px",
                                                         fontSize: "18px"
                                                     }}>
-                                                {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : "Run"}
+                                                {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : isPreRunEvaluationComplete ? "Run" : "Run after Evaluate"}
                                                 <PlayArrowIcon/>
                                             </Button>
                                             {selectedEdge && (
