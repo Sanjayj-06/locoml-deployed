@@ -190,8 +190,12 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
           });
           if(data && data.model_id){
             if(regressionModelMap[data.model_id]){
-              data.entity = regressionModelMap[data.model_id];
+              const selectedModel = regressionModelMap[data.model_id];
+              data.entity = selectedModel;
               setIsModelSelected(true);
+              if (data.onModelSelect) {
+                data.onModelSelect(selectedModel);
+              }
             }
             else{
               data.entity = null;
@@ -207,6 +211,9 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         })
         .catch((error) => {
           console.log(error);
+          setRegressionModels({});
+          setIsModelSelected(false);
+          setIsLoading(false);
         });
     }
     fetchData();
@@ -214,9 +221,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     , []);
 
   const handleChange = (value) => {
-    // Pass selected value to parent component
-    data.entity = regressionModels[value];
+    const selectedModel = regressionModels[value];
+    data.entity = selectedModel;
+    data.model_id = value;
     setIsModelSelected(true);
+    if (data.onModelSelect) {
+      data.onModelSelect(selectedModel);
+    }
   };
 
   const handleOpenModal = () => {

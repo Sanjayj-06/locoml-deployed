@@ -1,9 +1,9 @@
 import React, {useCallback, useState} from "react";
 import axios from "axios";
-import {DeleteOutline} from "@mui/icons-material";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DeleteOutline from "@mui/icons-material/DeleteOutline";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import {Button, CircularProgress, Modal, Typography, Box} from "@mui/material";
+import {Button, CircularProgress, Modal, Typography} from "@mui/material";
 import {CsvToHtmlTable} from 'react-csv-to-table';
 import './inference.css'
 import 'reactflow/dist/style.css';
@@ -151,17 +151,36 @@ const ImageResultsDisplay = ({ results }) => {
   );
 };
 
+const modelParameters = {
+    "Pass or Fail": [
+        "student_id",
+        "attendance_pct",
+        "homework_pct",
+        "midterm_score",
+        "study_hours_per_week"
+    ],
+    "ShelvaHP": [
+        "Square_Footage",
+        "Num_Bedrooms",
+        "Num_Bathrooms",
+        "Year_Built",
+        "Lot_Size",
+        "Garage_Size",
+        "Neighborhood_Quality"
+    ],
+    // Add other models and their parameters here
+};
+
 function Inference() {
 
     const reactFlowWrapper = React.useRef(null);
 
-    const [loading, setLoading] = React.useState(false);
+    const [loading] = React.useState(false);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [edges, setEdges] = useEdgesState([]);
     const [reactFlowInstance, setReactFlowInstance] = React.useState(null);
 
-    const [popupOpen, setPopupOpen] = useState(false);
     const [csvData, setCsvData] = useState("");
     const [open, setOpen] = useState(false);
 
@@ -176,7 +195,6 @@ function Inference() {
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
     const [isPipelinePaused, setIsPipelinePaused] = useState(false);
-    const [adapterNodeId, setAdapterNodeId] = useState(null);
     const [hoveredNodeInfo, setHoveredNodeInfo] = useState(null);
     const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
     const [isPreRunEvaluationComplete, setIsPreRunEvaluationComplete] = useState(false);
@@ -256,12 +274,10 @@ function Inference() {
                     }
 
                     setOpen(true);
-                    setPopupOpen(true);
                 }
             } catch (error) {
                 const backendMessage = error?.response?.data?.error || error?.response?.data?.message || error.message;
                 console.error("Pipeline run failed:", backendMessage, error);
-                setPopupOpen(true);
                 setCsvData("");
                 setOpen(false);
                 window.alert(`Pipeline run failed: ${backendMessage}`);
@@ -280,10 +296,6 @@ function Inference() {
         }
 
         executePipelineRun();
-    };
-
-    const handleClosePopup = () => {
-        setPopupOpen(false);
     };
 
     function handleDownloadBatch() {
@@ -311,22 +323,10 @@ function Inference() {
           }
     }
 
-    const style = {
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 400,
-        bgcolor: 'white',
-        border: '2px solid #333333',
-        boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
-        borderRadius: '10px',
-        p: 4,
-    };
 
     const onConnect = useCallback(
         (params) => setEdges((eds) => addEdge(params, eds)),
-        [],
+        [setEdges],
     )
 
     const onDragOver = useCallback((event) => {
@@ -370,9 +370,8 @@ function Inference() {
         setHoveredNodeInfo(null);
     }, []);
 
-    const onDrop = useCallback(
-        (event) => {
-            event.preventDefault();
+    const onDrop = (event) => {
+        event.preventDefault();
 
             const type = event.dataTransfer.getData('application/reactflow');
             console.log("Type: ", type)
@@ -415,19 +414,17 @@ function Inference() {
             console.log("NodeType: ", nodeType)
             const newNode = {
                 id: getID(),
-                type,
                 position,
                 data: {label: `${type}`, entity: null,
                 model_name: null, task_name: null, candidate_labels: null, // needed for huggingFaceSelectorNode only
-                onDelete: deleteNode, onNameChange: handleNameChange},
+                selectedModel: selectedModel, modelParameters: modelParameters,
+                onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection},
                 style: {backgroundColor: color},
                 type: nodeType
             };
 
-            setNodes((nds) => nds.concat(newNode));
-        },
-        [reactFlowInstance],
-    );
+        setNodes((nds) => nds.concat(newNode));
+    };
 
     const deleteNode = (id) => {
         setNodes((nds) => nds.filter((node) => node.id !== id));
@@ -445,13 +442,6 @@ function Inference() {
         });
     };
 
-    const [selectedClassification, setSelectedClassification] = useState(null);
-
-    const handleClassificationChange = (value) => {
-        setSelectedClassification(value);
-        console.log("Selected classification model: ", value);
-    };
-
     const handleEdgesChange = useCallback((changes) => {
         changes.forEach(change => {
             if (change.type === 'select' && change.selected) {
@@ -461,7 +451,7 @@ function Inference() {
             }
         });
         setEdges((eds) => applyEdgeChanges(changes, eds));
-    }, []);
+    }, [setEdges, setSelectedEdge]);
 
     const handleDeleteEdge = () => {
         setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdge));
@@ -521,7 +511,8 @@ function Inference() {
                 position: {x: newPosX, y: newPosY},
                 data: {label: `${type}`, entity: null,
                     model_name: null, task_name: null, candidate_labels: null,
-                    onDelete: deleteNode, onNameChange: handleNameChange},
+                    selectedModel: selectedModel, modelParameters: modelParameters,
+                    onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection},
                 style: {backgroundColor: nodeTypeColorMap[nodeType]}
             };
             setNodes((nds) => nds.concat(newNode));
@@ -539,7 +530,6 @@ function Inference() {
                         const result = response.data;
                         setCsvData(result);
                         setOpen(true);
-                        setPopupOpen(true);
                         setIsPipelinePaused(false);
                     } else {
                         const errorData = response.data;
@@ -631,8 +621,11 @@ function Inference() {
                     model_name: null,
                     task_name: null,
                     candidate_labels: null,
+                    selectedModel: selectedModel,
+                    modelParameters: modelParameters,
                     onDelete: deleteNode,
-                    onNameChange: handleNameChange
+                    onNameChange: handleNameChange,
+                    onModelSelect: handleModelSelection
                 },
                 style: { 
                     backgroundColor: nodeTypeColorMap[node.type],
@@ -680,6 +673,26 @@ function Inference() {
         setEdges(newEdges);
     };
 
+    const [selectedModel, setSelectedModel] = useState(null);
+
+    const handleModelSelection = (model) => {
+        setSelectedModel(model);
+        setNodes((oldNodes) => oldNodes.map(node => {
+            if (node.type === "inputData") {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        selectedModel: model,
+                        modelParameters: modelParameters,
+                    }
+                };
+            }
+            return node;
+        }));
+    };
+
+
     return (
 
         <div>
@@ -718,7 +731,8 @@ function Inference() {
                         />
                         <Modal 
                             open={open} 
-                            onClose={() => setOpen(false)} 
+                            onClose={() => { setOpen(false); window.location.reload(); }} 
+                            hideBackdrop
                             style={{
                                 width: "90%",
                                 position: "absolute",
@@ -752,7 +766,7 @@ function Inference() {
                                     padding: '0 20px'
                                 }}>
                                     <Button 
-                                        onClick={() => setOpen(false)}
+                                        onClick={() => { setOpen(false); window.location.reload(); }}
                                         variant="outlined"
                                     >
                                         Close
@@ -795,33 +809,33 @@ function Inference() {
                                     >
                                         <Panel position="top-right">
                                             <Button onClick={handleOpenEvaluation} variant="outlined" style={{
-                                                borderRadius: 36,
+                                                borderRadius: 20,
                                                 borderColor: "#3345dd",
                                                 color: "#3345dd",
-                                                padding: "18px 24px",
-                                                fontSize: "18px",
-                                                marginRight: "10px"
+                                                padding: "5px 10px",
+                                                fontSize: "12px",
+                                                marginRight: "5px"
                                             }}>Evaluate Model</Button>
                                             <Button onClick={handleOpenChatbot} variant="contained" style={{
-                                                borderRadius: 36,
+                                                borderRadius: 20,
                                                 backgroundColor: "#3345dd",
-                                                padding: "18px 24px",
-                                                fontSize: "18px",
-                                                marginRight: "10px"
+                                                padding: "5px 10px",
+                                                fontSize: "12px",
+                                                marginRight: "5px"
                                             }}>Pipeline LLM</Button>
                                             <Button onClick={handleSaveDialogOpen} variant="contained"
                                                     disabled={saveButtonText !== defaultSaveText} style={{
-                                                borderRadius: 36,
+                                                borderRadius: 20,
                                                 backgroundColor: "#333333",
-                                                padding: "18px 36px",
-                                                fontSize: "18px"
+                                                padding: "5px 12px",
+                                                fontSize: "12px"
                                             }}>{saveButtonText}</Button>
                                             <Button onClick={isPipelinePaused ? handleResume : handleRun} variant="contained" disabled={buttonLoading}
                                                     style={{
-                                                        borderRadius: 35,
+                                                        borderRadius: 20,
                                                         backgroundColor: "#333333",
-                                                        padding: "18px 36px",
-                                                        fontSize: "18px"
+                                                        padding: "5px 12px",
+                                                        fontSize: "12px"
                                                     }}>
                                                 {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : isPreRunEvaluationComplete ? "Run" : "Run after Evaluate"}
                                                 <PlayArrowIcon/>

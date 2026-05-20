@@ -85,6 +85,14 @@
 //                         }}>
 //                     {isFileUploaded !== "" ? `Uploaded: ${isFileUploaded}` : 'Upload Dataset'}
 //                 </Button>
+//                 <Button style={{
+//                     height: "20px", fontSize: "10px", marginTop: "2px", marginBottom: "2px",
+//                     display: "flex", justifyContent: "center", alignItems: "center",
+//                     backgroundColor: "#e0f7fa", color: "#00796b",
+//                 }}
+//                         onClick={handleInstantResult}>
+//                     Instant Result
+//                 </Button>
 //             </div>
 //             <Handle
 //                 type="source"
@@ -96,14 +104,13 @@
 //     );
 // });
 
-import React, { memo, useRef, useState } from 'react';
+import React, { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Modal, Button, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import DatasetLinkedOutlinedIcon from '@mui/icons-material/DatasetLinkedOutlined';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
-import {DeleteOutlined} from '@ant-design/icons';
 import './NodeStyles.css';
 import axios from "axios";
 
@@ -111,6 +118,7 @@ import axios from "axios";
 export default memo(({ id, data, isConnectable }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isFileUploaded, setIsFileUploaded] = useState("");
+    const [manualInputsReady, setManualInputsReady] = useState(false);
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
@@ -127,6 +135,7 @@ export default memo(({ id, data, isConnectable }) => {
     const handleUpload = (info) => {
         const file = info.file;
         setIsFileUploaded(file.name);
+        setManualInputsReady(false);
         const datasetType = file.type === 'application/zip' ? 'zip' : 'csv';
 
         const formData = new FormData();
@@ -160,6 +169,78 @@ export default memo(({ id, data, isConnectable }) => {
         // setIsModalOpen(false); // Close the modal after upload
     };
 
+    const fetchModelColumns = async (modelName) => {
+        if (!modelName) {
+            return null;
+        }
+        try {
+            const response = await axios.get(`/getDatasets/columns/${encodeURIComponent(modelName)}`);
+            const columns = response?.data?.non_target_columns;
+            if (Array.isArray(columns) && columns.length > 0) {
+                return columns;
+            }
+        } catch (error) {
+            console.error("Failed to fetch model columns:", error);
+        }
+        return null;
+    };
+
+    const extractModelColumns = (selectedModel) => {
+        if (!selectedModel || typeof selectedModel !== "object") {
+            return null;
+        }
+        if (Array.isArray(selectedModel.non_target_columns)) {
+            return selectedModel.non_target_columns;
+        }
+        if (selectedModel.input_schema) {
+            const inputSchema = selectedModel.input_schema;
+            if (Array.isArray(inputSchema.columns)) {
+                return inputSchema.columns;
+            }
+            if (Array.isArray(inputSchema.features)) {
+                return inputSchema.features;
+            }
+        }
+        return null;
+    };
+
+    const handleInstantResult = async () => {
+        if (!data.selectedModel) {
+            alert("Select the Pretrained model to use this feature");
+            return;
+        }
+        const selectedModel = data.selectedModel;
+        const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel?.model_name;
+        const questions = extractModelColumns(selectedModel)
+            || await fetchModelColumns(modelName)
+            || (data.modelParameters && data.modelParameters[modelName]);
+        if (!questions || questions.length === 0) {
+            alert("No parameters found for the selected model.");
+            return;
+        }
+
+        const userInputs = {};
+        for (const question of questions) {
+            const answer = prompt(`Enter value for ${question}:`);
+            if (answer === null) {
+                alert("Operation cancelled.");
+                return;
+            }
+            const trimmedAnswer = String(answer).trim();
+            const numericValue = Number(trimmedAnswer);
+            userInputs[question] = Number.isFinite(numericValue) && trimmedAnswer !== "" ? numericValue : trimmedAnswer;
+        }
+        data.entity = {
+            manual_inputs: userInputs,
+            manual_input_order: questions,
+            dataset_type: "manual",
+            nodeid: id,
+        };
+        setIsFileUploaded("");
+        setManualInputsReady(true);
+        alert("Inputs saved. Click Run to execute the pipeline.");
+    };
+
     return (
         <>
             <Handle
@@ -183,20 +264,32 @@ export default memo(({ id, data, isConnectable }) => {
             </div>
 
             <Modal
-                title="Upload Dataset"
+                title="Input Selection"
                 visible={isModalOpen}
                 onCancel={handleCloseModal}
                 footer={null}
             >
-                <Upload
-                    name="file"
-                    beforeUpload={() => false} // Prevent automatic upload
-                    onChange={handleUpload}
-                    accept=".csv,.zip"
-                >
-                    <Button icon={<UploadOutlined />}>Click to Upload</Button>
-                </Upload>
-                {isFileUploaded && <p>Uploaded: {isFileUploaded}</p>}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
+                    <Upload
+                        name="file"
+                        beforeUpload={() => false} // Prevent automatic upload
+                        onChange={handleUpload}
+                        accept=".csv,.zip"
+                    >
+                        <Button icon={<UploadOutlined />}>Upload dataset</Button>
+                    </Upload>
+                    {isFileUploaded && <p style={{ marginTop: '10px', marginBottom: '0' }}>Uploaded: {isFileUploaded}</p>}
+
+                    <div style={{ margin: '15px 0', color: '#888', fontWeight: 'bold' }}>(or)</div>
+
+                    <Button
+                        onClick={() => {
+                            handleCloseModal();
+                            handleInstantResult();
+                        }}>
+                        {manualInputsReady ? "Manual Inputs Ready" : "Manual Input (only for single input)"}
+                    </Button>
+                </div>
             </Modal>
 
             <Handle

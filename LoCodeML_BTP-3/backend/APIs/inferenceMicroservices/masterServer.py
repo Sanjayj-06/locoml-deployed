@@ -50,6 +50,8 @@ def resolve_input_dataset(node):
     entity = node.get('data', {}).get('entity')
 
     if isinstance(entity, dict):
+        if entity.get('manual_inputs'):
+            return None, None
         dataset_id = entity.get('dataset_id')
         dataset_type_value = entity.get('dataset_type') or dataset_type
         if dataset_id and dataset_type_value:
@@ -60,6 +62,15 @@ def resolve_input_dataset(node):
         return cached_dataset_id, dataset_type
 
     return None, None
+
+
+def build_manual_dataset(entity):
+    manual_inputs = entity.get('manual_inputs') or {}
+    if not manual_inputs:
+        return None
+    input_order = entity.get('manual_input_order') or list(manual_inputs.keys())
+    values = [manual_inputs.get(key) for key in input_order]
+    return [input_order, values]
 
 
 def resolve_model_id(node):
@@ -318,13 +329,22 @@ def execute(node, ip):
     # print(node['id'])
     op = None
     if node['data']['label'] == 'Inputs':
-        dataset_id_value, dataset_type_value = resolve_input_dataset(node)
-        if not dataset_id_value or not dataset_type_value:
-            return {
-                "error": "No uploaded dataset was attached to the input node. Upload a dataset before running the pipeline.",
-                "status_code": 400,
-            }
-        op = callInputRouter(dataset_id_value, dataset_type_value)
+        entity = node.get('data', {}).get('entity')
+        if isinstance(entity, dict) and entity.get('manual_inputs'):
+            op = build_manual_dataset(entity)
+            if not op:
+                return {
+                    "error": "Manual inputs are empty. Provide inputs before running the pipeline.",
+                    "status_code": 400,
+                }
+        else:
+            dataset_id_value, dataset_type_value = resolve_input_dataset(node)
+            if not dataset_id_value or not dataset_type_value:
+                return {
+                    "error": "No uploaded dataset was attached to the input node. Upload a dataset before running the pipeline.",
+                    "status_code": 400,
+                }
+            op = callInputRouter(dataset_id_value, dataset_type_value)
     elif node['data']['label'] == 'Preprocessing':
         print("Helllo Nijesh this is preprocessing speaking",node['data'], flush=True)
         op = callPreprocessRouter(node['data'], ip)

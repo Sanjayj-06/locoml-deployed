@@ -191,8 +191,12 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
           });
           if (data && data.model_id) {
             if (classificationModelMap[data.model_id]) {
-              data.entity = classificationModelMap[data.model_id];
+              const selectedModel = classificationModelMap[data.model_id];
+              data.entity = selectedModel;
               setIsModelSelected(true);
+              if (data.onModelSelect) {
+                data.onModelSelect(selectedModel);
+              }
             } else {
               data.entity = null;
               setIsModelSelected(false);
@@ -214,9 +218,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     , []);
 
   const handleChange = (value) => {
-    // Pass selected value to parent component
-    data.entity = classificationModels[value];
+    const selectedModel = classificationModels[value];
+    data.entity = selectedModel;
+    data.model_id = value;
     setIsModelSelected(true);
+    if (data.onModelSelect) {
+      data.onModelSelect(selectedModel);
+    }
   };
 
   const handleDelete = () => {
