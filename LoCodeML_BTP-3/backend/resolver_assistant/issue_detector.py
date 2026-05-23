@@ -553,6 +553,20 @@ class IssueDetector:
         - Text-heavy target/data -> SENTIMENT_ANALYSIS
         - Image metadata/zip -> IMAGE_CLASSIFICATION
         """
+        # Safeguard: If no dataset selection has been made, do not infer any task type
+        input_nodes = [n for n in nodes if n.get('type') == 'inputData' or n.get('data', {}).get('label') == 'Inputs']
+        has_active_dataset = False
+        if dataset_meta:
+            has_active_dataset = True
+        elif input_nodes:
+            for n in input_nodes:
+                ndata = n.get('data', {})
+                if ndata.get('dataset_id') or ndata.get('entity') or ndata.get('dataset_type'):
+                    has_active_dataset = True
+                    break
+        if not has_active_dataset:
+            return None
+
         dataset_type = None
         dataset_name = ""
         
@@ -575,6 +589,24 @@ class IssueDetector:
             elif isinstance(ent, str) and ent:
                 dataset_name = ent.lower()
                 
+        # Rule for manual inference inputs: inherit task from active model in the pipeline
+        if dataset_type == 'manual':
+            model_nodes = [n for n in nodes if n.get('type') in ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']]
+            if model_nodes:
+                model_node = model_nodes[0]
+                ntype = model_node.get('type')
+                label = str(model_node.get('data', {}).get('label', '')).lower()
+                live_task_type = str(model_node.get('task_type') or model_node.get('data', {}).get('task_type') or model_node.get('objective') or model_node.get('data', {}).get('objective') or '').upper()
+                
+                if 'REGRESSION' in live_task_type or ntype == 'regression' or 'regression' in label:
+                    return 'REGRESSION'
+                elif 'SENTIMENT' in live_task_type or ntype in ['sentiment', 'huggingface'] or 'sentiment' in label:
+                    return 'SENTIMENT_ANALYSIS'
+                elif 'IMAGE_CLASSIFICATION' in live_task_type or ntype == 'imageclassification' or 'image' in label:
+                    return 'IMAGE_CLASSIFICATION'
+                elif 'CLASSIFICATION' in live_task_type or ntype == 'classification' or 'class' in label:
+                    return 'CLASSIFICATION'
+
         # Rule for IMAGE_CLASSIFICATION
         if dataset_type in ['image', 'zip'] or 'image' in dataset_name or 'zip' in dataset_name:
             return 'IMAGE_CLASSIFICATION'

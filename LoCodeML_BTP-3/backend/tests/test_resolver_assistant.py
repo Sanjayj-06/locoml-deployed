@@ -1266,5 +1266,57 @@ class TestResolverAssistantValidation(unittest.TestCase):
             res = _resolve_dataset_path("12345", None)
             self.assertIn("12345.csv", res)
 
+    def test_manual_input_task_type_inheritance(self):
+        from resolver_assistant.issue_detector import IssueDetector
+        dataset_meta = {
+            "dataset_type": "manual"
+        }
+        nodes = [
+            {
+                "id": "node_input",
+                "type": "inputData",
+                "data": {
+                    "label": "Inputs",
+                    "dataset_type": "manual",
+                    "entity": {
+                        "dataset_type": "manual",
+                        "manual_inputs": {"sqft": 1000}
+                    }
+                }
+            },
+            {
+                "id": "node_model",
+                "type": "regression",
+                "task_type": "REGRESSION",
+                "model_id": "r_model",
+                "data": {"label": "Regression", "entity": {"model_id": "r_model"}}
+            }
+        ]
+        inferred = IssueDetector.infer_dataset_task(dataset_meta, nodes)
+        self.assertEqual(inferred, "REGRESSION")
+
+    def test_missing_dataset_no_mismatch_warning(self):
+        from resolver_assistant.issue_detector import IssueDetector
+        dataset_meta = None
+        nodes = [
+            {
+                "id": "node_input",
+                "type": "inputData",
+                "data": {
+                    "label": "Inputs"
+                }
+            },
+            {
+                "id": "node_model",
+                "type": "regression",
+                "task_type": "REGRESSION",
+                "data": {"label": "Regression"}
+            }
+        ]
+        inferred = IssueDetector.infer_dataset_task(dataset_meta, nodes)
+        self.assertIsNone(inferred)
+
 if __name__ == '__main__':
     unittest.main()
+
+

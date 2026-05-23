@@ -114,6 +114,28 @@ def getDataset(dataset_id, dataset_type):
 @getDatasets.route('/getDatasets/columns/<model_name>')
 def getDatasetColumns(model_name):
     collection = db['Models_Trained']
-    
     data = collection.find_one({'model_name': model_name})
-    return {'target_column': data['target_column'], 'non_target_columns': data['non_target_columns']}
+    if data:
+        return {'target_column': data.get('target_column'), 'non_target_columns': data.get('non_target_columns')}
+
+    # Fallback to Model_zoo
+    zoo_collection = db['Model_zoo']
+    data = zoo_collection.find_one({'model_name': model_name})
+    if data:
+        input_schema = data.get('input_schema', [])
+        non_target_columns = []
+        if isinstance(input_schema, list):
+            for col in input_schema:
+                if isinstance(col, dict):
+                    non_target_columns.append(col.get('column_name'))
+                else:
+                    non_target_columns.append(col)
+        elif isinstance(input_schema, dict):
+            non_target_columns = input_schema.get('columns') or input_schema.get('features') or []
+
+        return {
+            'target_column': data.get('target_column'),
+            'non_target_columns': [c for c in non_target_columns if c]
+        }
+
+    return jsonify({'message': 'Model columns not found'}), 404

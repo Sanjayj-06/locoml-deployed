@@ -38,10 +38,10 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const [classificationModels, setClassificationModels] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  
-  const [isModelSelected, setIsModelSelected] = React.useState(false);
   const [isCustomModelOpen, setIsCustomModelOpen] = React.useState(false);
   const [isCodeSaved, setIsCodeSaved] = React.useState(false);
+
+  const isModelSelected = !!(data?.model_id || data?.entity);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -193,7 +193,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             if (classificationModelMap[data.model_id]) {
               const selectedModel = classificationModelMap[data.model_id];
               data.entity = selectedModel;
-              setIsModelSelected(true);
               if (data.onModelBind) {
                 data.onModelBind(id, selectedModel);
               }
@@ -202,12 +201,10 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
               }
             } else {
               data.entity = null;
-              setIsModelSelected(false);
               console.warn("Model ID not found in classificationModels map.");
             }
           } else {
             data.entity = null;
-            setIsModelSelected(false);
           }
           setClassificationModels(classificationModelMap);
           setIsLoading(false);
@@ -224,7 +221,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     const selectedModel = classificationModels[value];
     data.entity = selectedModel;
     data.model_id = value;
-    setIsModelSelected(true);
     if (data.onModelBind) {
       data.onModelBind(id, selectedModel);
     }
@@ -350,7 +346,8 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             <FormControl style={{ width: '200px' }}>
               <Select
                 className="nodrag nopan"
-                defaultValue={data?.model_id || ""}
+                style={{ width: '100%' }}
+                value={data?.model_id || undefined}
                 options={Object.keys(classificationModels).map((model_id) => ({
                   value: model_id,
                   label: classificationModels[model_id].model_name,

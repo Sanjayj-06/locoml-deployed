@@ -106,7 +106,10 @@ const getNodeObjective = (node) => {
   return String(objective).toLowerCase();
 };
 
-const getNodeTitle = (node) => node?.data?.name || node?.data?.label || node?.data?.entity?.model_name || node?.data?.entity?.model_id || node?.type || 'Pipeline Node';
+const getNodeTitle = (node) => {
+  const title = node?.data?.name || node?.data?.label || node?.data?.entity?.model_name || node?.data?.entity?.model_id || node?.type || 'Pipeline Node';
+  return typeof title === 'object' ? (title?.model_name || title?.name || title?.model_id || JSON.stringify(title)) : String(title);
+};
 
 const getEntityLabel = (entity) => {
   if (!entity) {
@@ -174,12 +177,12 @@ const buildInputSummary = (node) => {
   const summary = [];
   const data = node?.data || {};
 
-  if (data.name) summary.push(['Name', data.name]);
-  if (data.label) summary.push(['Label', data.label]);
-  if (data.preprocessingType) summary.push(['Preprocessing Type', data.preprocessingType]);
-  if (data.task_name) summary.push(['Task', data.task_name]);
-  if (data.model_name) summary.push(['Model Name', data.model_name]);
-  if (data.model_id) summary.push(['Model ID', data.model_id]);
+  if (data.name) summary.push(['Name', typeof data.name === 'object' ? JSON.stringify(data.name) : String(data.name)]);
+  if (data.label) summary.push(['Label', typeof data.label === 'object' ? (data.label.model_name || data.label.name || data.label.label || JSON.stringify(data.label)) : String(data.label)]);
+  if (data.preprocessingType) summary.push(['Preprocessing Type', typeof data.preprocessingType === 'object' ? JSON.stringify(data.preprocessingType) : String(data.preprocessingType)]);
+  if (data.task_name) summary.push(['Task', typeof data.task_name === 'object' ? JSON.stringify(data.task_name) : String(data.task_name)]);
+  if (data.model_name) summary.push(['Model Name', typeof data.model_name === 'object' ? JSON.stringify(data.model_name) : String(data.model_name)]);
+  if (data.model_id) summary.push(['Model ID', typeof data.model_id === 'object' ? JSON.stringify(data.model_id) : String(data.model_id)]);
 
   if (data.entity) {
     if (typeof data.entity === 'string') {

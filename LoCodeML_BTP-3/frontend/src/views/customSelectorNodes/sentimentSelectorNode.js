@@ -13,7 +13,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const [sentimentModels, setSentimentModels] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isModelSelected, setIsModelSelected] = React.useState(false);
+  const isModelSelected = !!(data?.model_id || data?.entity);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -37,18 +37,15 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             if (sentimentModelMap[data.model_id]) {
               const selectedModel = sentimentModelMap[data.model_id];
               data.entity = selectedModel;
-              setIsModelSelected(true);
               if (data.onModelBind) {
                 data.onModelBind(id, selectedModel);
               }
             } else {
               data.entity = null;
-              setIsModelSelected(false);
               console.warn("No model found for the given model_id: ", data.model_id);
             }
           } else {
             data.entity = null;
-            setIsModelSelected(false);
           }
           setSentimentModels(sentimentModelMap);
           setIsLoading(false);
@@ -56,7 +53,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         .catch((error) => {
           console.log(error);
           setSentimentModels({});
-          setIsModelSelected(false);
           setIsLoading(false);
         });
     }
@@ -68,7 +64,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     const selectedModel = sentimentModels[value];
     data.entity = selectedModel;
     data.model_id = value;
-    setIsModelSelected(true);
     if (data.onModelBind) {
       data.onModelBind(id, selectedModel);
     }
@@ -112,15 +107,16 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         <div >
           {/* Dropdown for selecting classification models */}
           <Select
-            className="selectStyle nodrag nopan"
-            defaultValue={data?.model_id || ""}
+            className="nodrag nopan"
+            style={{ width: '200px' }}
+            value={data?.model_id || undefined}
             options={Object.keys(sentimentModels).map((model_id) => ({
               value: model_id,
               label: sentimentModels[model_id].model_name
             }))}
             disabled={isLoading}
             onChange={handleChange}
-          // className="nodrag nopan"
+            placeholder="Select a model"
           />
         </div>
       </Modal>

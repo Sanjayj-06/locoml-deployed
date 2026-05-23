@@ -282,7 +282,7 @@ function Inference() {
                 };
             }
             // Clear out bound model metadata from any model nodes to prevent stale compatibility validations
-            if (['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(node.type)) {
+            if (datasetInfo.dataset_type !== 'manual' && ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(node.type)) {
                 return {
                     ...node,
                     model_id: null,
@@ -459,11 +459,31 @@ function Inference() {
                 let boundModelData = null;
                 try {
                     const res = await axios.get(`http://localhost:5001/getTrainedModels/${objective}`);
-                    const trainedModels = res.data || [];
+                    const responseData = res.data?.trained_models || [];
+                    const trainedModels = responseData.map(modelStr => {
+                        try {
+                            return typeof modelStr === 'string' ? JSON.parse(modelStr.replace(/Infinity/g, "1e1000")) : modelStr;
+                        } catch (e) {
+                            return null;
+                        }
+                    }).filter(Boolean);
                     
                     const inpNode = currentNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
                     const dsInfo = inpNode?.data?.entity;
-                    const datasetColumns = dsInfo?.columns || [];
+                    
+                    let datasetColumns = [];
+                    if (dsInfo) {
+                        if (Array.isArray(dsInfo.columns)) {
+                            datasetColumns = dsInfo.columns;
+                        } else if (dsInfo.manual_input_order) {
+                            datasetColumns = dsInfo.manual_input_order;
+                        } else if (dsInfo.manual_inputs) {
+                            datasetColumns = Object.keys(dsInfo.manual_inputs);
+                        } else if (dsInfo.features) {
+                            datasetColumns = dsInfo.features;
+                        }
+                    }
+                    
                     const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
                     
                     let compatibleModel = null;
@@ -479,6 +499,10 @@ function Inference() {
                             compatibleModel = model;
                             break;
                         }
+                    }
+                    
+                    if (!compatibleModel && trainedModels.length > 0) {
+                        compatibleModel = trainedModels[0];
                     }
                     
                     if (compatibleModel) {

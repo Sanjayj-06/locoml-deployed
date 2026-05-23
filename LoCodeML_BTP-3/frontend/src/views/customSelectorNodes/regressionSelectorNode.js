@@ -35,9 +35,10 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const [regressionModels, setRegressionModels] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isModelSelected, setIsModelSelected] = React.useState(false);
   const [isCodeSaved, setIsCodeSaved] = React.useState(false);
   const [isCustomModelOpen, setIsCustomModelOpen] = React.useState(false);
+
+  const isModelSelected = !!(data?.model_id || data?.entity);
 
   // React.useEffect(() => {
   //   if(data && data.entity){
@@ -192,7 +193,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             if(regressionModelMap[data.model_id]){
               const selectedModel = regressionModelMap[data.model_id];
               data.entity = selectedModel;
-              setIsModelSelected(true);
               if (data.onModelBind) {
                 data.onModelBind(id, selectedModel);
               }
@@ -202,12 +202,10 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             }
             else{
               data.entity = null;
-              setIsModelSelected(false);
               console.warn("No model found for the given model_id: ", data.model_id);
             }
           } else{
             data.entity = null;
-            setIsModelSelected(false);
           }
           setRegressionModels(regressionModelMap);
           setIsLoading(false);
@@ -215,7 +213,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         .catch((error) => {
           console.log(error);
           setRegressionModels({});
-          setIsModelSelected(false);
           setIsLoading(false);
         });
     }
@@ -227,7 +224,6 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     const selectedModel = regressionModels[value];
     data.entity = selectedModel;
     data.model_id = value;
-    setIsModelSelected(true);
     if (data.onModelBind) {
       data.onModelBind(id, selectedModel);
     }
@@ -298,15 +294,16 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
           <AccordionDetails>
             <FormControl style={{ width: '200px' }}>
               <Select
-                className="selectStyle nodrag nopan"
-                defaultValue={data?.model_id || ""}
+                className="nodrag nopan"
+                style={{ width: '100%' }}
+                value={data?.model_id || undefined}
                 options={Object.keys(regressionModels).map((model_id) => ({
                   value: model_id,
                   label: regressionModels[model_id].model_name
                 }))}
                 disabled={isLoading}
                 onChange={handleChange}
-              // className="nodrag nopan"
+                placeholder="Select a model"
               />
             </FormControl>
           </AccordionDetails>
