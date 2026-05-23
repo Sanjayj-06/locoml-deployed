@@ -193,7 +193,7 @@ const ModelCard = (props) => {
     const DownloadModel = () => {
         setDownloadLoading(true);
         setDownloadedModel(false);
-        axios.get("http://127.0.0.1:5000/getTrainedModelFile/" + modelDetails.model_id + "/" + selectedVersion)
+        axios.get("/getTrainedModelFile/" + modelDetails.model_id + "/" + selectedVersion)
             .then((response) => {
                 console.log(response);
                 const url = window.URL.createObjectURL(new Blob([response.data]));

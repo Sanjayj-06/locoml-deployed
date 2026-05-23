@@ -18,11 +18,11 @@ const ChangeHyperparameters = (props) => {
     useEffect(() => {
 
         const getHyperparameters = async () => {
-            const response = await axios.get('http://127.0.0.1:5000/getClassifierMap');
+            const response = await axios.get('/getClassifierMap');
             setClassifierMap(response.data);
 
             const sklearn_estimator_name = modelDetails.estimator_type
-            axios.post('http://127.0.0.1:5000/getHyperparameters', {
+            axios.post('/getHyperparameters', {
                 'estimator_name': sklearn_estimator_name,
             }).then(response3 => {
                 console.log(response3.data)

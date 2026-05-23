@@ -122,7 +122,7 @@ const UpdateModel = () => {
         setTrainingCompleted(false);
         setTrainLoading(true);
 
-        const eventSource = new EventSource("http://127.0.0.1:5000/stream?channel=mychannel");
+        const eventSource = new EventSource("/stream?channel=mychannel");
 
         setTrainingStatus({
             progress: 0,
@@ -228,7 +228,7 @@ const UpdateModel = () => {
             // hyperparameter_dict[Object.keys(hyperparameters)[i]] = textBoxValues[i]
         }
         console.log(hyperparameter_dict)
-        const eventSource = new EventSource("http://127.0.0.1:5000/stream?channel=mychannel");
+        const eventSource = new EventSource("/stream?channel=mychannel");
 
         setTrainingStatus({
             progress: 0,
@@ -242,7 +242,7 @@ const UpdateModel = () => {
             setTrainingStatus(JSON.parse(event.data));
         };
 
-        axios.post('http://127.0.0.1:5000/changeHyperparameters', {
+        axios.post('/changeHyperparameters', {
             'model_details': modelDetails,
             'new_hyperparameters': hyperparameter_dict
         }).then(response => {
@@ -294,7 +294,7 @@ const UpdateModel = () => {
             }
         }
         console.log(hyperparameter_dict)
-        const eventSource = new EventSource("http://127.0.0.1:5000/stream?channel=mychannel");
+        const eventSource = new EventSource("/stream?channel=mychannel");
 
         setTrainingStatus({
             progress: 0,
@@ -308,7 +308,7 @@ const UpdateModel = () => {
             setTrainingStatus(JSON.parse(event.data));
         };
 
-        axios.post('http://127.0.0.1:5000/changeEstimatorType', {
+        axios.post('/changeEstimatorType', {
             'model_details': modelDetails,
             'new_hyperparameters': hyperparameter_dict,
             'estimator_type': selectedClassifier,

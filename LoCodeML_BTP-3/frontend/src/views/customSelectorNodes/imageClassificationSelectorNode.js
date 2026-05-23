@@ -35,8 +35,12 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
           });
           if (data && data.model_id) {
             if(imageClassificationModelMap[data.model_id]){
-              data.entity = imageClassificationModelMap[data.model_id];
+              const selectedModel = imageClassificationModelMap[data.model_id];
+              data.entity = selectedModel;
               setIsModelSelected(true);
+              if (data.onModelBind) {
+                data.onModelBind(id, selectedModel);
+              }
             } else {
               data.entity = null;
               setIsModelSelected(false);
@@ -52,6 +56,9 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         })
         .catch((error) => {
           console.log(error);
+          setImageClassificationModels({});
+          setIsModelSelected(false);
+          setIsLoading(false);
         });
     }
     fetchData();
@@ -59,9 +66,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     , []);
 
   const handleChange = (value) => {
-    // Pass selected value to parent component
-    data.entity = imageClassificationModels[value];
+    const selectedModel = imageClassificationModels[value];
+    data.entity = selectedModel;
+    data.model_id = value;
     setIsModelSelected(true);
+    if (data.onModelBind) {
+      data.onModelBind(id, selectedModel);
+    }
   };
 
   const handleDelete = () => {

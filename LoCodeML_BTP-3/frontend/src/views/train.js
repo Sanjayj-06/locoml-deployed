@@ -93,7 +93,7 @@ function Train() {
   const classes = useStyles();
 
   const trainUrl =
-    process.env.REACT_APP_TRAIN_URL || "http://127.0.0.1:5000/trainModel";
+    process.env.REACT_APP_TRAIN_URL || "/trainModel";
 
   const steps = ["Training Options", "Model Selection", "Train the model"];
   const updateStep0Variables = (data) => {
@@ -161,7 +161,7 @@ function Train() {
     }
 
     axios
-      .get("http://127.0.0.1:5000/getClassifierMap")
+      .get("/getClassifierMap")
       .then((response) => {
         setClassifierMap(response.data);
       })
@@ -170,7 +170,7 @@ function Train() {
       });
 
     axios
-      .get("http://127.0.0.1:5000/getRegressorMap")
+      .get("/getRegressorMap")
       .then((response) => {
         setRegressorMap(response.data);
       })
@@ -178,7 +178,7 @@ function Train() {
         console.log(err);
       });
     axios
-      .get("http://127.0.0.1:5000/getSentimentMap")
+      .get("/getSentimentMap")
       .then((response) => {
         setSentimentMap(response.data);
       })
@@ -200,7 +200,7 @@ function Train() {
     console.log("posting");
     console.log(trainUrl);
     const eventSource = new EventSource(
-      "http://127.0.0.1:5000/stream?channel=mychannel"
+      "/stream?channel=mychannel"
     );
 
     eventSource.onmessage = (event) => {

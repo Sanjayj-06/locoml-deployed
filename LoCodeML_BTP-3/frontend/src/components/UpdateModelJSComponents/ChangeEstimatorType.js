@@ -27,16 +27,16 @@ const ChangeEstimatorType = (props) => {
     useEffect(() => {
         const getClassifiersAndHyperparameters = async () => {
             // console.log(process.env.REACT_APP_GET_ALL_CLASSIFIERS_URL)
-            const response = await axios.get('http://127.0.0.1:5000/getAllClassifiers');
+            const response = await axios.get('/getAllClassifiers');
             setAllClassifiers(response.data);
-            const response2 = await axios.get('http://127.0.0.1:5000/getClassifierMap');
+            const response2 = await axios.get('/getClassifierMap');
             console.log(response2)
             setClassifierMap(response2.data);
             // console.log()
             if (modelDetails.objective.toLowerCase() == 'classification') {
                 setSelectedClassifier(response2.data.reverse_map[modelDetails.estimator_type])
             }
-            const response3 = await axios.post('http://127.0.0.1:5000/getHyperparameters', {
+            const response3 = await axios.post('/getHyperparameters', {
                 'estimator_name': modelDetails.estimator_type,
             })
             // console.log(response3.data)
@@ -65,7 +65,7 @@ const ChangeEstimatorType = (props) => {
         const sklearn_estimator_name = classifierMap.forward_map[e.target.value]
         console.log(classifierMap)
         console.log(sklearn_estimator_name)
-        axios.post('http://127.0.0.1:5000/getHyperparameters', {
+        axios.post('/getHyperparameters', {
             'estimator_name': sklearn_estimator_name,
         }).then(response3 => {
             console.log(response3.data)

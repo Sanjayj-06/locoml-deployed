@@ -33,11 +33,31 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
           parsedModels.forEach((model) => {
             sentimentModelMap[model.model_id] = model;
           });
+          if (data && data.model_id) {
+            if (sentimentModelMap[data.model_id]) {
+              const selectedModel = sentimentModelMap[data.model_id];
+              data.entity = selectedModel;
+              setIsModelSelected(true);
+              if (data.onModelBind) {
+                data.onModelBind(id, selectedModel);
+              }
+            } else {
+              data.entity = null;
+              setIsModelSelected(false);
+              console.warn("No model found for the given model_id: ", data.model_id);
+            }
+          } else {
+            data.entity = null;
+            setIsModelSelected(false);
+          }
           setSentimentModels(sentimentModelMap);
           setIsLoading(false);
         })
         .catch((error) => {
           console.log(error);
+          setSentimentModels({});
+          setIsModelSelected(false);
+          setIsLoading(false);
         });
     }
     fetchData();
@@ -45,9 +65,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     , []);
 
   const handleChange = (value) => {
-    // Pass selected value to parent component
-    data.entity = sentimentModels[value];
+    const selectedModel = sentimentModels[value];
+    data.entity = selectedModel;
+    data.model_id = value;
     setIsModelSelected(true);
+    if (data.onModelBind) {
+      data.onModelBind(id, selectedModel);
+    }
   };
 
   const handleDelete = () => {

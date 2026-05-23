@@ -34,7 +34,7 @@ function UploadData() {
   const [apiUrl, setApiUrl] = useState("");
 
   const apiBaseUrl =
-    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+    process.env.REACT_APP_API_BASE_URL || "";
   const getAllDatasetsUrl =
     process.env.REACT_APP_GET_ALL_DATASETS_URL ||
     `${apiBaseUrl}/getDatasets`;

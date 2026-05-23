@@ -76,6 +76,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     setDataType(value);
     setIsDataTypeModalOpen(false);
     setIsPreprocessModalOpen(true);
+    if (data.onPreprocessBind) {
+      data.onPreprocessBind(id, {
+        preprocessingType: value,
+        scalerType: selectedPreprocess?.value || data.entity || 'None',
+        parameters: parameters
+      });
+    }
   };
 
   const handlePreprocessChange = (value) => {
@@ -83,6 +90,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
       data.entity = value;
       setIsPreprocessorSelected(true);
       setIsPreprocessModalOpen(false);
+      if (data.onPreprocessBind) {
+        data.onPreprocessBind(id, {
+          preprocessingType: dataType,
+          scalerType: value,
+          parameters: {}
+        });
+      }
       return;
     }
     const selectedProcess = imagePreprocessing.find(p => p.value === value);
@@ -95,6 +109,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
       console.log(data.entity);
       setIsPreprocessorSelected(true);
       setIsPreprocessModalOpen(false);
+      if (data.onPreprocessBind) {
+        data.onPreprocessBind(id, {
+          preprocessingType: dataType,
+          scalerType: value,
+          parameters: {}
+        });
+      }
     }
   };
 
@@ -110,6 +131,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     setShowParameterModal(false);
     setIsPreprocessModalOpen(false);
     setIsPreprocessorSelected(true);
+    if (data.onPreprocessBind) {
+      data.onPreprocessBind(id, {
+        preprocessingType: dataType,
+        scalerType: selectedPreprocess.value,
+        parameters: paramValues
+      });
+    }
   };
 
   const handleDelete = () => {

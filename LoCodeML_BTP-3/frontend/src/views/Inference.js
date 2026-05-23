@@ -30,6 +30,8 @@ import adapterSelectorNode from "./customSelectorNodes/adapterSelectorNode";
 import imageClassificationSelectorNode from "./customSelectorNodes/imageClassificationSelectorNode";
 import MetricsOverlay from "../components/pipeline/MetricsOverlay";
 import PreRunEvaluationDashboard, { buildEvaluationSignature } from "../components/pipeline/PreRunEvaluationDashboard";
+import ResolverAssistantButton from "../components/resolver_assistant/ResolverAssistantButton";
+import ResolverAssistantPanel from "../components/resolver_assistant/ResolverAssistantPanel";
 
 const nodeTypes = {
     inputData: inputSelectorNode,
@@ -199,6 +201,414 @@ function Inference() {
     const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
     const [isPreRunEvaluationComplete, setIsPreRunEvaluationComplete] = useState(false);
     const [evaluatedPipelineSignature, setEvaluatedPipelineSignature] = useState("");
+    const [isResolverOpen, setIsResolverOpen] = useState(false);
+    const [selectedModel, setSelectedModel] = useState(null);
+    const [validationResult, setValidationResult] = useState({ valid: true, issues: [] });
+    const [resolverStatus, setResolverStatus] = useState("IDLE");
+
+    function handleModelSelection(model) {
+        setSelectedModel(model);
+        setNodes((oldNodes) => oldNodes.map(node => {
+            if (node.type === "inputData") {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        selectedModel: model,
+                        modelParameters: modelParameters,
+                    }
+                };
+            }
+            return node;
+        }));
+    }
+
+    function handleModelBind(nodeId, model) {
+        if (!model) return;
+        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+
+        const updatedNodes = currentNodes.map(node => {
+            if (node.id === nodeId) {
+                return {
+                    ...node,
+                    model_id: model.model_id,
+                    estimator: model.estimator_type || model.estimator,
+                    model_name: model.model_name,
+                    artifact_path: model.saved_model_path,
+                    task_type: model.objective || model.task_type,
+                    training_columns: model.training_columns || model.input_schema,
+                    target_column: model.target_column,
+                    bound_model: true,
+                    data: {
+                        ...node.data,
+                        entity: model,
+                        model_id: model.model_id,
+                        task_type: model.objective || model.task_type,
+                        training_columns: model.training_columns || model.input_schema,
+                        target_column: model.target_column,
+                        bound_model: true,
+                    }
+                };
+            }
+            return node;
+        });
+
+        setNodes(updatedNodes);
+
+        // Run validation synchronously with the newly updated nodes/edges snapshot
+        runLocalValidation(updatedNodes, currentEdges);
+    }
+
+    function handleDatasetBind(nodeId, datasetInfo) {
+        if (!datasetInfo) return;
+        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+
+        // Clear task, validation, and resolver states upon dataset change
+        setValidationResult({ valid: true, issues: [] });
+        setResolverStatus("IDLE");
+
+        const updatedNodes = currentNodes.map(node => {
+            if (node.id === nodeId) {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        entity: datasetInfo,
+                        dataset_id: datasetInfo.dataset_id || datasetInfo.id || datasetInfo,
+                        dataset_type: datasetInfo.dataset_type || 'tabular'
+                    }
+                };
+            }
+            // Clear out bound model metadata from any model nodes to prevent stale compatibility validations
+            if (['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(node.type)) {
+                return {
+                    ...node,
+                    model_id: null,
+                    estimator: null,
+                    model_name: null,
+                    artifact_path: null,
+                    task_type: null,
+                    training_columns: null,
+                    target_column: null,
+                    bound_model: false,
+                    data: {
+                        ...node.data,
+                        entity: null,
+                        model_id: null,
+                        task_type: null,
+                        training_columns: null,
+                        target_column: null,
+                        bound_model: false,
+                    }
+                };
+            }
+            return node;
+        });
+
+        setNodes(updatedNodes);
+
+        // Run validation synchronously with the updated dataset nodes/edges snapshot
+        runLocalValidation(updatedNodes, currentEdges);
+    }
+
+    function handlePreprocessBind(nodeId, preprocessInfo) {
+        if (!preprocessInfo) return;
+        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+
+        const updatedNodes = currentNodes.map(node => {
+            if (node.id === nodeId) {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        preprocessingType: preprocessInfo.preprocessingType,
+                        scalerType: preprocessInfo.scalerType,
+                        ...preprocessInfo
+                    }
+                };
+            }
+            return node;
+        });
+
+        setNodes(updatedNodes);
+
+        // Run validation synchronously with the updated preprocessing nodes/edges snapshot
+        runLocalValidation(updatedNodes, currentEdges);
+    }
+
+    const runLocalValidation = async (currentNodes, currentEdges) => {
+        // Clear cached validation issues before revalidation to prevent stale rendering
+        setValidationResult({ valid: true, issues: [] });
+        
+        const activeNodes = currentNodes || (reactFlowInstance ? reactFlowInstance.getNodes() : nodes);
+        const activeEdges = currentEdges || (reactFlowInstance ? reactFlowInstance.getEdges() : edges);
+
+        const inpNode = activeNodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
+        const dsInfo = inpNode?.data?.entity;
+        try {
+            const response = await axios.post("http://localhost:5001/resolver-assistant/validate", {
+                nodes: activeNodes,
+                edges: activeEdges,
+                dataset_id: dsInfo,
+                original_filename: dsInfo?.filename || dsInfo?.name,
+                pipeline_mode: "INFERENCE"
+            });
+            const data = response.data;
+            setValidationResult(data);
+
+            // Compute/Extract inferred tasks with fallbacks
+            let datasetTask = data.dataset_task;
+            if (!datasetTask) {
+                const dsName = (typeof dsInfo === 'string' ? dsInfo : dsInfo?.filename || dsInfo?.name || "").toLowerCase();
+                const dsType = inpNode?.data?.dataset_type || dsInfo?.dataset_type;
+                if (dsType === 'image' || dsName.includes('image') || dsName.includes('zip')) {
+                    datasetTask = 'IMAGE_CLASSIFICATION';
+                } else if (dsType === 'text' || dsName.includes('sentiment') || dsName.includes('text')) {
+                    datasetTask = 'SENTIMENT_ANALYSIS';
+                } else if (dsName.includes('price') || dsName.includes('sales') || dsName.includes('hp.csv')) {
+                    datasetTask = 'REGRESSION';
+                } else {
+                    datasetTask = 'CLASSIFICATION';
+                }
+            }
+
+            let modelTask = data.model_task;
+            if (!modelTask) {
+                const modelNode = activeNodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
+                if (modelNode) {
+                    if (modelNode.type === 'classification') modelTask = 'CLASSIFICATION';
+                    else if (modelNode.type === 'regression') modelTask = 'REGRESSION';
+                    else if (modelNode.type === 'sentiment') modelTask = 'SENTIMENT_ANALYSIS';
+                    else if (modelNode.type === 'imageclassification') modelTask = 'IMAGE_CLASSIFICATION';
+                    else if (modelNode.type === 'huggingface') modelTask = 'SENTIMENT_ANALYSIS';
+                }
+            }
+
+            console.log("Dataset task:", datasetTask);
+            console.log("Model task:", modelTask);
+            console.log("Validation result:", data);
+
+            // Apply resolver button state machine transitions
+            if (!data.valid) {
+                setResolverStatus("INVALID");
+            } else {
+                setResolverStatus((prev) => {
+                    if (prev === "INVALID" || prev === "FIXING") {
+                        setTimeout(() => {
+                            setResolverStatus("IDLE");
+                        }, 3000);
+                        return "VALID";
+                    }
+                    return "IDLE";
+                });
+            }
+
+            return data.valid;
+        } catch (error) {
+            console.error("Local validation failed:", error);
+            setResolverStatus("IDLE");
+            return true;
+        }
+    };
+
+    const handleOpenResolverAssistant = async () => {
+        await runLocalValidation();
+        setIsResolverOpen(true);
+    };
+
+    async function applyGraphAction(action) {
+        setResolverStatus("FIXING");
+        switch (action.type) {
+            case "replace_node": {
+                const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+                const targetNode = currentNodes.find(n => n.id === action.node_id);
+                if (targetNode) {
+                    console.log("[Resolver Debug] Old Node Payload State:", targetNode);
+                }
+
+                const replacementLower = String(action.replacement || "").toLowerCase();
+                let updatedType = targetNode ? targetNode.type : "regression";
+                let updatedStyle = targetNode ? { ...targetNode.style } : {};
+                let objective = "regression";
+                
+                if (replacementLower.includes("regression")) {
+                    updatedType = "regression";
+                    updatedStyle.backgroundColor = "lightgrey";
+                    objective = "regression";
+                } else if (replacementLower.includes("classification")) {
+                    updatedType = "classification";
+                    updatedStyle.backgroundColor = "#b0f2b4";
+                    objective = "classification";
+                } else if (replacementLower.includes("sentiment")) {
+                    updatedType = "sentiment";
+                    updatedStyle.backgroundColor = "#ffef9f";
+                    objective = "sentiment";
+                } else if (replacementLower.includes("huggingface")) {
+                    updatedType = "huggingface";
+                    updatedStyle.backgroundColor = "#cbf2f2";
+                    objective = "sentiment";
+                } else if (replacementLower.includes("image")) {
+                    updatedType = "imageclassification";
+                    updatedStyle.backgroundColor = "#f2b0b0";
+                    objective = "imageclassification";
+                }
+
+                let boundModelData = null;
+                try {
+                    const res = await axios.get(`http://localhost:5001/getTrainedModels/${objective}`);
+                    const trainedModels = res.data || [];
+                    
+                    const inpNode = currentNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+                    const dsInfo = inpNode?.data?.entity;
+                    const datasetColumns = dsInfo?.columns || [];
+                    const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
+                    
+                    let compatibleModel = null;
+                    for (const model of trainedModels) {
+                        const modelFeatures = model.training_columns || model.input_schema || [];
+                        const normModelFeatures = modelFeatures.map(f => {
+                            const colName = typeof f === 'object' ? (f.column_name || f.name || "") : String(f);
+                            return colName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        });
+                        
+                        const allFeaturesExist = normModelFeatures.every(f => normDatasetCols.has(f));
+                        if (allFeaturesExist) {
+                            compatibleModel = model;
+                            break;
+                        }
+                    }
+                    
+                    if (compatibleModel) {
+                        boundModelData = {
+                            model_id: compatibleModel.model_id,
+                            estimator: compatibleModel.estimator,
+                            model_name: compatibleModel.model_name || compatibleModel.model_id,
+                            artifact_path: compatibleModel.saved_model_path || compatibleModel.artifact_path,
+                            task_type: compatibleModel.task_type || compatibleModel.objective?.toUpperCase(),
+                            training_columns: compatibleModel.training_columns,
+                            target_column: compatibleModel.target_column,
+                            bound_model: true,
+                            entity: compatibleModel
+                        };
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch trained models during auto-repair:", err);
+                }
+
+                if (!boundModelData) {
+                    const inferredTarget = "House_Price";
+                    boundModelData = {
+                        model_id: "default_" + objective + "_model",
+                        estimator: objective === "regression" ? "LinearRegression" : "LogisticRegression",
+                        model_name: "Default " + objective.charAt(0).toUpperCase() + objective.slice(1) + " Model",
+                        artifact_path: null,
+                        task_type: objective.toUpperCase(),
+                        training_columns: [],
+                        target_column: inferredTarget,
+                        bound_model: false,
+                        entity: {
+                            model_id: "default_" + objective + "_model",
+                            task_type: objective.toUpperCase(),
+                            target_column: inferredTarget
+                        }
+                    };
+                }
+
+                const updatedNodes = currentNodes.map((node) => {
+                    if (node.id === action.node_id) {
+                        const newPayload = {
+                            ...node,
+                            type: updatedType,
+                            style: updatedStyle,
+                            model_id: boundModelData.model_id,
+                            estimator: boundModelData.estimator,
+                            model_name: boundModelData.model_name,
+                            artifact_path: boundModelData.artifact_path,
+                            task_type: boundModelData.task_type,
+                            training_columns: boundModelData.training_columns,
+                            target_column: boundModelData.target_column,
+                            bound_model: boundModelData.bound_model,
+                            data: {
+                                ...node.data,
+                                label: action.replacement,
+                                model_id: boundModelData.model_id,
+                                estimator: boundModelData.estimator,
+                                model_name: boundModelData.model_name,
+                                artifact_path: boundModelData.artifact_path,
+                                task_type: boundModelData.task_type,
+                                training_columns: boundModelData.training_columns,
+                                target_column: boundModelData.target_column,
+                                bound_model: boundModelData.bound_model,
+                                entity: boundModelData.entity
+                            }
+                        };
+                        console.log("[Resolver Debug] New Node Payload State:", newPayload);
+                        return newPayload;
+                    }
+                    return node;
+                });
+
+                setNodes(updatedNodes);
+                setValidationResult({ valid: true, issues: [] });
+                await runLocalValidation(updatedNodes, reactFlowInstance ? reactFlowInstance.getEdges() : edges);
+                break;
+            }
+            case "delete_node":
+                deleteNode(action.node_id);
+                break;
+            case "add_node": {
+                const color = nodeTypeColorMap[action.node_type] || "lightgrey";
+                const newNode = {
+                    id: action.node_id || getID(),
+                    position: { x: 300, y: 300 },
+                    data: {
+                        label: action.label,
+                        entity: action.label,
+                        selectedModel: selectedModel,
+                        modelParameters: modelParameters,
+                        onDelete: deleteNode,
+                        onNameChange: handleNameChange,
+                        onModelSelect: handleModelSelection,
+                        onModelBind: handleModelBind,
+                        onDatasetBind: handleDatasetBind,
+                        onPreprocessBind: handlePreprocessBind
+                    },
+                    style: { backgroundColor: color },
+                    type: action.node_type
+                };
+                setNodes((nds) => nds.concat(newNode));
+                break;
+            }
+            case "add_edge": {
+                const newEdge = {
+                    id: `dndedge_${action.source}_${action.target}`,
+                    source: action.source,
+                    target: action.target,
+                    type: "smoothstep"
+                };
+                setEdges((eds) => addEdge(newEdge, eds));
+                break;
+            }
+            case "delete_edge":
+                setEdges((eds) => eds.filter(
+                    (e) => !(e.source === action.source && e.target === action.target)
+                ));
+                break;
+            default:
+                console.warn("Unknown graph mutation type:", action.type);
+                break;
+        }
+    }
+
+    // Auto-revalidation loop: runs revalidation in real-time upon any graph structure changes
+    React.useEffect(() => {
+        if (nodes.length > 0) {
+            runLocalValidation();
+        }
+    }, [nodes, edges]);
 
     React.useEffect(() => {
         if (!isPreRunEvaluationComplete || !evaluatedPipelineSignature) {
@@ -235,17 +645,60 @@ function Inference() {
         setNodes(updatedNodes);
     }
 
-    const executePipelineRun = () => {
+    const executePipelineRun = async () => {
+        const isValid = await runLocalValidation();
+        if (!isValid) {
+            setIsResolverOpen(true);
+            return;
+        }
+
         console.log("Nodes", nodes)
         console.log("Edges", edges)
+        
+        const inpNode = nodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
+        const dsInfo = inpNode?.data?.entity;
+        
+        // Find bound model node to get current task and model metadata
+        const modelNode = nodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
+        let activeTask = null;
+        let modelMetadata = null;
+        if (modelNode) {
+            activeTask = modelNode.task_type || modelNode.data?.entity?.task_type || modelNode.data?.entity?.objective;
+            if (!activeTask) {
+                if (modelNode.type === 'sentiment' || modelNode.type === 'huggingface') {
+                    activeTask = 'SENTIMENT_ANALYSIS';
+                } else if (modelNode.type === 'imageclassification') {
+                    activeTask = 'IMAGE_CLASSIFICATION';
+                } else if (modelNode.type === 'classification') {
+                    activeTask = 'CLASSIFICATION';
+                } else if (modelNode.type === 'regression') {
+                    activeTask = 'REGRESSION';
+                } else {
+                    activeTask = modelNode.type?.toUpperCase();
+                }
+            }
+            modelMetadata = {
+                model_id: modelNode.model_id || modelNode.data?.model_id || (typeof modelNode.data?.entity === 'object' ? modelNode.data?.entity?.model_id : null),
+                estimator: modelNode.estimator || modelNode.data?.entity?.estimator || modelNode.data?.entity?.estimator_type,
+                artifact_path: modelNode.artifact_path || modelNode.data?.entity?.saved_model_path,
+                task_type: modelNode.task_type || modelNode.data?.entity?.task_type || modelNode.data?.entity?.objective || activeTask
+            };
+        }
+
+        const payload = {
+            dataset_id: typeof dsInfo === 'string' ? dsInfo : dsInfo?.name || dsInfo?.dataset_id || dsInfo?.id || dsInfo?.filename || "",
+            nodes: nodes,
+            edges: edges,
+            task: activeTask,
+            model_metadata: modelMetadata
+        };
+        console.log("Execution payload:", payload);
+        
         setButtonLoading(true);
 
         const callMaster = async () => {
             try {
-                const response = await axios.post("http://localhost:5001/nodeInfo", {
-                    nodes: nodes,
-                    edges: edges
-                });
+                const response = await axios.post("http://localhost:5001/nodeInfo", payload);
 
                 console.log("Received response: ", typeof (response.data));
                 console.log("Response: ", response.data);
@@ -289,7 +742,13 @@ function Inference() {
         callMaster();
     };
 
-    const handleRun = () => {
+    const handleRun = async () => {
+        const isValid = await runLocalValidation();
+        if (!isValid) {
+            setIsResolverOpen(true);
+            return;
+        }
+
         if (!isPreRunEvaluationComplete) {
             setIsEvaluationDialogOpen(true);
             return;
@@ -418,7 +877,8 @@ function Inference() {
                 data: {label: `${type}`, entity: null,
                 model_name: null, task_name: null, candidate_labels: null, // needed for huggingFaceSelectorNode only
                 selectedModel: selectedModel, modelParameters: modelParameters,
-                onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection},
+                onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind},
+
                 style: {backgroundColor: color},
                 type: nodeType
             };
@@ -426,12 +886,12 @@ function Inference() {
         setNodes((nds) => nds.concat(newNode));
     };
 
-    const deleteNode = (id) => {
+    function deleteNode(id) {
         setNodes((nds) => nds.filter((node) => node.id !== id));
         setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
-    };
+    }
 
-    const handleNameChange = (id, newName) => {
+    function handleNameChange(id, newName) {
         setNodes((oldNodes) => {
             return oldNodes.map(node => {
                 if (node.id === id) {
@@ -440,7 +900,7 @@ function Inference() {
                 return node;
             });
         });
-    };
+    }
 
     const handleEdgesChange = useCallback((changes) => {
         changes.forEach(change => {
@@ -507,12 +967,13 @@ function Inference() {
             // handle for image classification task
             const newNode = {
                 id: getID(),
-                type: nodeType,  // Remove duplicate 'type' property
+                type: nodeType,
                 position: {x: newPosX, y: newPosY},
                 data: {label: `${type}`, entity: null,
                     model_name: null, task_name: null, candidate_labels: null,
                     selectedModel: selectedModel, modelParameters: modelParameters,
-                    onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection},
+                    onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind},
+
                 style: {backgroundColor: nodeTypeColorMap[nodeType]}
             };
             setNodes((nds) => nds.concat(newNode));
@@ -625,7 +1086,10 @@ function Inference() {
                     modelParameters: modelParameters,
                     onDelete: deleteNode,
                     onNameChange: handleNameChange,
-                    onModelSelect: handleModelSelection
+                    onModelSelect: handleModelSelection,
+                    onModelBind: handleModelBind,
+                    onDatasetBind: handleDatasetBind,
+                    onPreprocessBind: handlePreprocessBind
                 },
                 style: { 
                     backgroundColor: nodeTypeColorMap[node.type],
@@ -673,25 +1137,11 @@ function Inference() {
         setEdges(newEdges);
     };
 
-    const [selectedModel, setSelectedModel] = useState(null);
 
-    const handleModelSelection = (model) => {
-        setSelectedModel(model);
-        setNodes((oldNodes) => oldNodes.map(node => {
-            if (node.type === "inputData") {
-                return {
-                    ...node,
-                    data: {
-                        ...node.data,
-                        selectedModel: model,
-                        modelParameters: modelParameters,
-                    }
-                };
-            }
-            return node;
-        }));
-    };
 
+
+    const inputNode = nodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
+    const datasetInfo = inputNode?.data?.entity;
 
     return (
 
@@ -729,9 +1179,19 @@ function Inference() {
                             onApplyRouting={handleRoutingUpdate}
                             onEvaluationComplete={handleEvaluationComplete}
                         />
+                        <ResolverAssistantPanel
+                            open={isResolverOpen}
+                            onClose={() => setIsResolverOpen(false)}
+                            nodes={nodes}
+                            edges={edges}
+                            datasetInfo={datasetInfo}
+                            onApplyFix={applyGraphAction}
+                            validationResult={validationResult}
+                            triggerValidation={runLocalValidation}
+                        />
                         <Modal 
                             open={open} 
-                            onClose={() => { setOpen(false); window.location.reload(); }} 
+                            onClose={() => setOpen(false)} 
                             hideBackdrop
                             style={{
                                 width: "90%",
@@ -766,7 +1226,7 @@ function Inference() {
                                     padding: '0 20px'
                                 }}>
                                     <Button 
-                                        onClick={() => { setOpen(false); window.location.reload(); }}
+                                        onClick={() => setOpen(false)}
                                         variant="outlined"
                                     >
                                         Close
@@ -808,6 +1268,7 @@ function Inference() {
                                         elementsSelectable={!buttonLoading}
                                     >
                                         <Panel position="top-right">
+                                            <ResolverAssistantButton onClick={handleOpenResolverAssistant} status={resolverStatus} />
                                             <Button onClick={handleOpenEvaluation} variant="outlined" style={{
                                                 borderRadius: 20,
                                                 borderColor: "#3345dd",

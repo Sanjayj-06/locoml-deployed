@@ -194,6 +194,9 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
               const selectedModel = classificationModelMap[data.model_id];
               data.entity = selectedModel;
               setIsModelSelected(true);
+              if (data.onModelBind) {
+                data.onModelBind(id, selectedModel);
+              }
               if (data.onModelSelect) {
                 data.onModelSelect(selectedModel);
               }
@@ -222,6 +225,9 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
     data.entity = selectedModel;
     data.model_id = value;
     setIsModelSelected(true);
+    if (data.onModelBind) {
+      data.onModelBind(id, selectedModel);
+    }
     if (data.onModelSelect) {
       data.onModelSelect(selectedModel);
     }

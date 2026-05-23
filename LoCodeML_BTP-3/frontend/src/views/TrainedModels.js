@@ -23,7 +23,7 @@ import ModelCard from "components/ModelInfo/ModelInfoCard";
 import { Row, Col, Button as ReactStrapButton } from "reactstrap";
 
 function TrainedModels() {
-    const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+    const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "";
     const [loading, setLoading] = React.useState(true);
     const [datasets, setDatasets] = React.useState({});
     const [trainedModels, setTrainedModels] = React.useState([{

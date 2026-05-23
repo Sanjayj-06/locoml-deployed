@@ -154,20 +154,25 @@ export default memo(({ id, data, isConnectable }) => {
             }
         }).then(res => {
             const datasetId = res?.data?.dataset_id || res?.data?.datasetId;
-            data.entity = {
+            const entityData = {
                 dataset_id: datasetId,
                 dataset_type: datasetType,
                 filename: file.name,
                 filesize: file.size,
                 nodeid: id,
             };
+            data.entity = entityData;
             console.log(res);
+
+            if (typeof data.onDatasetBind === 'function') {
+                data.onDatasetBind(id, entityData);
+            }
         }).catch(err => {
             console.log(err);
         });
-
-        // setIsModalOpen(false); // Close the modal after upload
     };
+
+
 
     const fetchModelColumns = async (modelName) => {
         if (!modelName) {
@@ -230,15 +235,20 @@ export default memo(({ id, data, isConnectable }) => {
             const numericValue = Number(trimmedAnswer);
             userInputs[question] = Number.isFinite(numericValue) && trimmedAnswer !== "" ? numericValue : trimmedAnswer;
         }
-        data.entity = {
+        const entityData = {
             manual_inputs: userInputs,
             manual_input_order: questions,
             dataset_type: "manual",
             nodeid: id,
         };
+        data.entity = entityData;
         setIsFileUploaded("");
         setManualInputsReady(true);
         alert("Inputs saved. Click Run to execute the pipeline.");
+
+        if (typeof data.onDatasetBind === 'function') {
+            data.onDatasetBind(id, entityData);
+        }
     };
 
     return (

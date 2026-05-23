@@ -51,7 +51,7 @@ function DataPreprocessing() {
     const navigate = useNavigate();
 
     const apiBaseUrl =
-        process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:5000";
+        process.env.REACT_APP_API_BASE_URL || "";
     const getAllDatasetsUrl =
         process.env.REACT_APP_GET_ALL_DATASETS_URL ||
         `${apiBaseUrl}/getDatasets`;
@@ -133,7 +133,7 @@ function DataPreprocessing() {
                 };
 
                 const response = await axios.post(
-                    `http://127.0.0.1:5000/apply_preprocess/${selectedDataset.dataset_id}`,
+                    `/apply_preprocess/${selectedDataset.dataset_id}`,
                     preprocessingParams
                 );
 
@@ -204,7 +204,7 @@ function DataPreprocessing() {
                 setZipfile(true);
                 
                 // Using direct URL instead of environment variable
-                const response = await axios.get(`http://127.0.0.1:5000/preprocessing_tasks/${dataset['dataset_id']}`);
+                const response = await axios.get(`/preprocessing_tasks/${dataset['dataset_id']}`);
                 const preprocessingSuggestions = response.data;
                 
                 setPreprocessingTasks(preprocessingSuggestions);

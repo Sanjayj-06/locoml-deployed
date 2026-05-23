@@ -13,10 +13,10 @@ class GeminiProvider(BaseProvider):
     Google Gemini API provider implementation.
     """
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.api_key = os.getenv("PIPELINE_LLM_API_KEY")
         if not self.api_key:
-            logger.error("GEMINI_API_KEY is not set.")
-            raise ValueError("GEMINI_API_KEY is required for GeminiProvider.")
+            logger.error("PIPELINE_LLM_API_KEY is not set.")
+            raise ValueError("PIPELINE_LLM_API_KEY is required for GeminiProvider.")
             
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel("gemini-flash-latest")

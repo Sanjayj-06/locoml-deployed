@@ -70,7 +70,7 @@ function Dashboard() {
         }
 
         const getDatasetDetails = async () => {
-            const response = await axios.get('http://127.0.0.1:5000/getDatasets');
+            const response = await axios.get('/getDatasets');
             setDatasetDetails(response.data.dataset_list);
             console.log(response.data.dataset_list.length);
             systemStats["total_datasets"] = response.data.dataset_list.length;
