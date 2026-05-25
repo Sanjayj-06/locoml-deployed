@@ -100,7 +100,7 @@ const NodeMetricsTooltip = ({
       <div className="runtime-health-tooltip__riskPanel">
         <div className="runtime-health-tooltip__riskSection">
           <span className="runtime-health-tooltip__riskLabel">Failure Risk</span>
-          <span 
+          <span
             className="runtime-health-tooltip__riskValue"
             style={{ color: healthState.accent }}
           >

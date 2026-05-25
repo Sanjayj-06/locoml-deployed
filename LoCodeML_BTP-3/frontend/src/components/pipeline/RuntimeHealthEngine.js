@@ -95,7 +95,7 @@ export const simulateRuntimeMetrics = (node, { tick = 0, pipelineRunning = false
   const pausedBias = pipelinePaused ? 0.05 : 0;
 
   const latency = Math.max(18, Math.round(profile.latency + (pulse * 18) + (pipelineRunning ? 10 : -6) + (entityBias * 100)));
-  
+
   // Use real telemetry if available, otherwise mock
   const cpuUsage = realTelemetry?.cpuUsage ?? clamp(Math.round(profile.cpu + (pulse * 8) + (jitter * 5) + (pipelineRunning ? 8 : -3) + (entityBias * 42)), 0, 100);
   const memoryUsage = realTelemetry?.memoryUsage ?? clamp(Math.round(profile.memory + (pulse * 6) + (jitter * 4) + (pipelineRunning ? 6 : -2) + (entityBias * 28)), 0, 100);
@@ -118,7 +118,7 @@ export const simulateRuntimeMetrics = (node, { tick = 0, pipelineRunning = false
   const healthScore = Math.round(clamp(100 - (failureProbability * 100) - Math.max(0, latency - 180) * 0.05, 0, 100));
   const stabilityIndex = Math.round(clamp(100 - (failureProbability * 75) - Math.abs(cpuUsage - 54) * 0.25 - Math.abs(gpuUsage - 48) * 0.2, 0, 100));
   const predictedRuntimeRisk = failureProbability >= 0.62 ? 'High' : failureProbability >= 0.28 ? 'Moderate' : 'Low';
-  const trendSeries = Array.from({length: 8}, (_, index) => {
+  const trendSeries = Array.from({ length: 8 }, (_, index) => {
     const trendPulse = Math.sin((tick / 4) + index * 0.75 + (seed % 9));
     return clamp(Math.round((failureProbability * 70) + ((trendPulse + 1) * 10)), 5, 95);
   });

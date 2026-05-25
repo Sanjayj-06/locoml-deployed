@@ -10,6 +10,7 @@ import Tab from '@mui/material/Tab';
 import Paper from '@mui/material/Paper';
 import { Col, Row, Button as ReactStrapButton, Collapse } from "reactstrap";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import { Table as ReactStrapTable } from "reactstrap";
 import ShortModelInfoComponent from "components/ModelInfo/ShortModelInfoComponent";
 import ChangeHyperparameters from "components/UpdateModelJSComponents/ChangeHyperparameters";
@@ -53,9 +54,13 @@ function a11yProps(index) {
     };
 }
 
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const trainedModelsUrl = process.env.REACT_APP_GET_TRAINED_MODELS_URL || `${apiBaseUrl}/getTrainedModels`;
+
 const UpdateModel = () => {
     const model_id = window.location.pathname.split("/")[3];
     const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
     const [trainLoading, setTrainLoading] = React.useState(false);
     const [modelDetails, setModelDetails] = React.useState({});
     const [updateMode, setUpdateMode] = React.useState('');
@@ -84,26 +89,28 @@ const UpdateModel = () => {
     };
 
     React.useEffect(() => {
-        // wait for 3 seconds
-        // const timer = setTimeout(() => {
-        //     setLoading(false);
-        // }, 1000);
-        // setModelDetails(JSON.parse(localStorage.getItem("modelDetails")));
-        axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + '/' + model_id)
+        setLoading(true);
+        setError(null);
+        axios.get(trainedModelsUrl + '/' + model_id)
             .then(async (response) => {
-                // if (response.data) {
-                //     localStorage.setItem("modelDetails", JSON.stringify(response.data))
-                // }
-                console.log(response.data);
-                setModelDetails(response.data);
-                setLoading(false)
+                if (response.data) {
+                    console.log(response.data);
+                    setModelDetails(response.data);
+                    setLoading(false);
+                } else {
+                    setError(`Model '${model_id}' was not found or contains no details.`);
+                    setLoading(false);
+                }
             })
             .catch((error) => {
-                console.log(error);
-            })
-
-        // return () => clearTimeout(timer);
-    }, []);
+                console.error("Failed to fetch model details:", error);
+                const errorMsg = error.response && error.response.data && error.response.data.error
+                    ? error.response.data.error
+                    : "The model may have been deleted, or the backend server is unreachable.";
+                setError(`Failed to retrieve model details for '${model_id}': ${errorMsg}`);
+                setLoading(false);
+            });
+    }, [model_id]);
 
     const updateChangeHyperparameterVariables = (data) => {
         console.log(data)
@@ -264,17 +271,15 @@ const UpdateModel = () => {
             // setTrainingResponse(response.data)
             setTrainLoading(false)
             setTrainingCompleted(true)
-            axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + '/' + model_id)
+            axios.get(trainedModelsUrl + '/' + model_id)
                 .then(async (response) => {
-                    // if (response.data) {
-                    //     localStorage.setItem("modelDetails", JSON.stringify(response.data))
-                    // }
-                    setModelDetails(response.data);
-                    // setLoading(false)
-                    console.log(response.data);
+                    if (response.data) {
+                        setModelDetails(response.data);
+                        console.log(response.data);
+                    }
                 })
                 .catch((error) => {
-                    console.log(error);
+                    console.error("Failed to refresh model details:", error);
                 })
         }).catch(err => {
             console.log(err)
@@ -329,17 +334,15 @@ const UpdateModel = () => {
             setTrainingResponse(responseData)
             setTrainLoading(false)
             setTrainingCompleted(true)
-            axios.get(process.env.REACT_APP_GET_TRAINED_MODELS_URL + '/' + model_id)
+            axios.get(trainedModelsUrl + '/' + model_id)
                 .then(async (response) => {
-                    // if (response.data) {
-                    //     localStorage.setItem("modelDetails", JSON.stringify(response.data))
-                    // }
-                    setModelDetails(response.data);
-                    // setLoading(false)
-                    console.log(response.data);
+                    if (response.data) {
+                        setModelDetails(response.data);
+                        console.log(response.data);
+                    }
                 })
                 .catch((error) => {
-                    console.log(error);
+                    console.error("Failed to refresh model details:", error);
                 })
         }).catch(err => {
             console.log(err)
@@ -390,6 +393,26 @@ const UpdateModel = () => {
                         <Typography variant="subtitle1" style={{ marginLeft: '10px' }}>
                             Please wait...
                         </Typography>
+                    </div> :
+                    error ?
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '70vh', textAlign: 'center' }}>
+                        <Paper elevation={3} style={{ padding: '2.5rem', maxWidth: '500px', borderRadius: '16px', border: '1px solid rgba(220, 53, 69, 0.2)', backgroundColor: '#fff' }}>
+                            <ErrorIcon color="error" style={{ fontSize: '4rem', marginBottom: '1rem' }} />
+                            <Typography variant="h5" color="error" gutterBottom style={{ fontWeight: 'bold' }}>
+                                Model Fetch Failed
+                            </Typography>
+                            <Typography variant="body1" style={{ margin: '1rem 0', color: '#555', lineHeight: '1.6' }}>
+                                {error}
+                            </Typography>
+                            <Button 
+                                variant="contained" 
+                                color="error" 
+                                onClick={() => { window.history.back() }}
+                                style={{ marginTop: '1.5rem', borderRadius: '8px', color: '#fff', textTransform: 'none', fontSize: '16px', padding: '8px 24px' }}
+                            >
+                                Return to Previous Page
+                            </Button>
+                        </Paper>
                     </div> :
                     <div>
                         <Row>

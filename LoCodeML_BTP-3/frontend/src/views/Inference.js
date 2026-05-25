@@ -1,10 +1,10 @@
-import React, {useCallback, useState} from "react";
+import React, { useCallback, useState } from "react";
 import axios from "axios";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteOutline from "@mui/icons-material/DeleteOutline";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import {Button, CircularProgress, Modal, Typography} from "@mui/material";
-import {CsvToHtmlTable} from 'react-csv-to-table';
+import { Button, CircularProgress, Modal, Typography } from "@mui/material";
+import { CsvToHtmlTable } from 'react-csv-to-table';
 import './inference.css'
 import 'reactflow/dist/style.css';
 import InferenceNavbar from './InferenceNavbar';
@@ -33,6 +33,7 @@ import MetricsOverlay from "../components/pipeline/MetricsOverlay";
 import PreRunEvaluationDashboard, { buildEvaluationSignature } from "../components/pipeline/PreRunEvaluationDashboard";
 import ResolverAssistantButton from "../components/resolver_assistant/ResolverAssistantButton";
 import ResolverAssistantPanel from "../components/resolver_assistant/ResolverAssistantPanel";
+import PipelineLegendDashboard from "../components/pipeline/PipelineLegendDashboard";
 
 const nodeTypes = {
     inputData: inputSelectorNode,
@@ -46,14 +47,14 @@ const nodeTypes = {
 };
 
 const nodeDetails = {
-    input: {"nodeType": 'inputData', 'type': 'Inputs'},
-    preprocessing: {"nodeType": 'preprocessing', 'type': 'Preprocessing'},
-    adapter: {"nodeType": 'adapter', 'type': 'Adapter'},
-    classification: {"nodeType": 'classification', 'type': 'Classification'},
-    regression: {"nodeType": 'regression', 'type': 'Regression'},
-    sentiment: {"nodeType": 'sentiment', 'type': 'Sentiment'},
-    huggingface: {"nodeType": 'huggingface', 'type': 'Huggingface'},
-    imageclassification: {"nodeType": 'imageclassification', 'type': 'Image Classification'},
+    input: { "nodeType": 'inputData', 'type': 'Inputs' },
+    preprocessing: { "nodeType": 'preprocessing', 'type': 'Preprocessing' },
+    adapter: { "nodeType": 'adapter', 'type': 'Adapter' },
+    classification: { "nodeType": 'classification', 'type': 'Classification' },
+    regression: { "nodeType": 'regression', 'type': 'Regression' },
+    sentiment: { "nodeType": 'sentiment', 'type': 'Sentiment' },
+    huggingface: { "nodeType": 'huggingface', 'type': 'Huggingface' },
+    imageclassification: { "nodeType": 'imageclassification', 'type': 'Image Classification' },
 }
 
 const presetDetails = {
@@ -106,52 +107,52 @@ const nodeDimensions = {
 
 // Add new component for image results display
 const ImageResultsDisplay = ({ results }) => {
-  return (
-    <div style={{ maxHeight: '70vh', overflow: 'auto', padding: '20px' }}>
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
-        gap: '20px' 
-      }}>
-        {results.map((result, index) => (
-          <div key={index} style={{ 
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            padding: '10px',
-            textAlign: 'center'
-          }}>
-            <img
-              src={`data:image/png;base64,${result.image}`}
-              alt={`Prediction ${index}`}
-              style={{ 
-                width: '100%',
-                height: '150px',
-                objectFit: 'contain',
-                marginBottom: '10px'
-              }}
-            />
-            <div style={{ 
-              backgroundColor: '#f5f5f5',
-              padding: '8px',
-              borderRadius: '4px'
+    return (
+        <div style={{ maxHeight: '70vh', overflow: 'auto', padding: '20px' }}>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: '20px'
             }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                Prediction: {result.predicted_label}
-              </div>
-              {result.confidence && (
-                <div style={{ 
-                  color: '#666',
-                  fontSize: '0.9em'
-                }}>
-                  Confidence: {(result.confidence * 100).toFixed(1)}%
-                </div>
-              )}
+                {results.map((result, index) => (
+                    <div key={index} style={{
+                        border: '1px solid #ddd',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        textAlign: 'center'
+                    }}>
+                        <img
+                            src={`data:image/png;base64,${result.image}`}
+                            alt={`Prediction ${index}`}
+                            style={{
+                                width: '100%',
+                                height: '150px',
+                                objectFit: 'contain',
+                                marginBottom: '10px'
+                            }}
+                        />
+                        <div style={{
+                            backgroundColor: '#f5f5f5',
+                            padding: '8px',
+                            borderRadius: '4px'
+                        }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                                Prediction: {result.predicted_label}
+                            </div>
+                            {result.confidence && (
+                                <div style={{
+                                    color: '#666',
+                                    fontSize: '0.9em'
+                                }}>
+                                    Confidence: {(result.confidence * 100).toFixed(1)}%
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 const modelParameters = {
@@ -347,7 +348,7 @@ function Inference() {
     const runLocalValidation = async (currentNodes, currentEdges) => {
         // Clear cached validation issues before revalidation to prevent stale rendering
         setValidationResult({ valid: true, issues: [] });
-        
+
         const activeNodes = currentNodes || (reactFlowInstance ? reactFlowInstance.getNodes() : nodes);
         const activeEdges = currentEdges || (reactFlowInstance ? reactFlowInstance.getEdges() : edges);
 
@@ -438,7 +439,7 @@ function Inference() {
                 let updatedType = targetNode ? targetNode.type : "regression";
                 let updatedStyle = targetNode ? { ...targetNode.style } : {};
                 let objective = "regression";
-                
+
                 if (replacementLower.includes("regression")) {
                     updatedType = "regression";
                     updatedStyle.backgroundColor = "lightgrey";
@@ -472,10 +473,10 @@ function Inference() {
                             return null;
                         }
                     }).filter(Boolean);
-                    
+
                     const inpNode = currentNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
                     const dsInfo = inpNode?.data?.entity;
-                    
+
                     let datasetColumns = [];
                     if (dsInfo) {
                         if (Array.isArray(dsInfo.columns)) {
@@ -488,9 +489,9 @@ function Inference() {
                             datasetColumns = dsInfo.features;
                         }
                     }
-                    
+
                     const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
-                    
+
                     let compatibleModel = null;
                     for (const model of trainedModels) {
                         const modelFeatures = model.training_columns || model.input_schema || [];
@@ -498,18 +499,18 @@ function Inference() {
                             const colName = typeof f === 'object' ? (f.column_name || f.name || "") : String(f);
                             return colName.toLowerCase().replace(/[^a-z0-9]/g, '');
                         });
-                        
+
                         const allFeaturesExist = normModelFeatures.every(f => normDatasetCols.has(f));
                         if (allFeaturesExist) {
                             compatibleModel = model;
                             break;
                         }
                     }
-                    
+
                     if (!compatibleModel && trainedModels.length > 0) {
                         compatibleModel = trainedModels[0];
                     }
-                    
+
                     if (compatibleModel) {
                         boundModelData = {
                             model_id: compatibleModel.model_id,
@@ -650,10 +651,10 @@ function Inference() {
         }
     }, [nodes, edges, evaluatedPipelineSignature, isPreRunEvaluationComplete]);
 
-    const handleOpenChatbot = () =>{
+    const handleOpenChatbot = () => {
         setChatbotState(true);
     }
-    const handleCloseChatbot = () =>{
+    const handleCloseChatbot = () => {
         setChatbotState(false);
     }
 
@@ -683,10 +684,10 @@ function Inference() {
 
         console.log("Nodes", nodes)
         console.log("Edges", edges)
-        
+
         const inpNode = nodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
         const dsInfo = inpNode?.data?.entity;
-        
+
         // Find bound model node to get current task and model metadata
         const modelNode = nodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
         let activeTask = null;
@@ -722,7 +723,7 @@ function Inference() {
             model_metadata: modelMetadata
         };
         console.log("Execution payload:", payload);
-        
+
         setButtonLoading(true);
 
         const callMaster = async () => {
@@ -798,7 +799,7 @@ function Inference() {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-          } else {
+        } else {
             // Handle regular CSV data as before
             const blob = new Blob([csvData], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
@@ -808,7 +809,7 @@ function Inference() {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-          }
+        }
     }
 
 
@@ -830,7 +831,7 @@ function Inference() {
         if (!wrapperRect || !nodeRect) {
             setHoveredNodeInfo({
                 node,
-                position: {x: 0, y: 0},
+                position: { x: 0, y: 0 },
                 nodeHeight: 0,
                 placement: 'above',
             });
@@ -861,56 +862,58 @@ function Inference() {
     const onDrop = (event) => {
         event.preventDefault();
 
-            const type = event.dataTransfer.getData('application/reactflow');
-            console.log("Type: ", type)
+        const type = event.dataTransfer.getData('application/reactflow');
+        console.log("Type: ", type)
 
-            // check if the dropped element is valid
-            if (typeof type === 'undefined' || !type) {
-                return;
-            }
+        // check if the dropped element is valid
+        if (typeof type === 'undefined' || !type) {
+            return;
+        }
 
-            const nodeType = event.dataTransfer.getData('nodeType');
-            let color;
+        const nodeType = event.dataTransfer.getData('nodeType');
+        let color;
 
-            color = nodeTypeColorMap[nodeType];
+        color = nodeTypeColorMap[nodeType];
 
-            if (nodeType === "classificationPreset") {
-                createPresetPipeline("classification", event);
-                return;
-            }
-            else if (nodeType === "regressionPreset") {
-                createPresetPipeline("regression", event);
-                return;
-            }
-            else if (nodeType === "sentimentPreset") {
-                createPresetPipeline("sentiment", event);
-                return;
-            }
-            else if (nodeType === "imageclassificationPreset") {
-                createPresetPipeline("imageclassification", event);
-                return;
-            }
-            // reactFlowInstance.project was renamed to reactFlowInstance.screenToFlowPosition
-            // and you don't need to subtract the reactFlowBounds.left/top anymore
-            // details: https://reactflow.dev/whats-new/2023-11-10
-            const position = reactFlowInstance.screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-            });
+        if (nodeType === "classificationPreset") {
+            createPresetPipeline("classification", event);
+            return;
+        }
+        else if (nodeType === "regressionPreset") {
+            createPresetPipeline("regression", event);
+            return;
+        }
+        else if (nodeType === "sentimentPreset") {
+            createPresetPipeline("sentiment", event);
+            return;
+        }
+        else if (nodeType === "imageclassificationPreset") {
+            createPresetPipeline("imageclassification", event);
+            return;
+        }
+        // reactFlowInstance.project was renamed to reactFlowInstance.screenToFlowPosition
+        // and you don't need to subtract the reactFlowBounds.left/top anymore
+        // details: https://reactflow.dev/whats-new/2023-11-10
+        const position = reactFlowInstance.screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+        });
 
 
-            console.log("NodeType: ", nodeType)
-            const newNode = {
-                id: getID(),
-                position,
-                data: {label: `${type}`, entity: null,
+        console.log("NodeType: ", nodeType)
+        const newNode = {
+            id: getID(),
+            position,
+            data: {
+                label: `${type}`, entity: null,
                 model_name: null, task_name: null, candidate_labels: null, // needed for huggingFaceSelectorNode only
                 selectedModel: selectedModel, modelParameters: modelParameters,
-                onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind},
+                onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind
+            },
 
-                style: {backgroundColor: color},
-                type: nodeType
-            };
+            style: { backgroundColor: color },
+            type: nodeType
+        };
 
         setNodes((nds) => nds.concat(newNode));
     };
@@ -924,7 +927,7 @@ function Inference() {
         setNodes((oldNodes) => {
             return oldNodes.map(node => {
                 if (node.id === id) {
-                    return {...node, data: {...node.data, name: newName}};
+                    return { ...node, data: { ...node.data, name: newName } };
                 }
                 return node;
             });
@@ -987,10 +990,10 @@ function Inference() {
         try {
             const retrieveUrl = process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || "http://localhost:5005/retrievePipelineDetails";
             const response = await axios.get(retrieveUrl + `/?pipeline_id=${pipelineId}`);
-            
+
             let data = response.data;
             if (typeof data === "string") data = JSON.parse(data);
-            
+
             if (!data || !data.nodes || data.message) {
                 alert(data.message || "Pipeline ID not found in database.");
                 return;
@@ -1032,7 +1035,7 @@ function Inference() {
 
         const baseSpacingX = 50;
         const yIncrement = 10;
-        
+
         for (let i = 0; i < presetNodes.length; i++) {
             const nodeType = presetNodes[i].nodeType;
             const type = presetNodes[i].type;
@@ -1044,13 +1047,15 @@ function Inference() {
             const newNode = {
                 id: getID(),
                 type: nodeType,
-                position: {x: newPosX, y: newPosY},
-                data: {label: `${type}`, entity: null,
+                position: { x: newPosX, y: newPosY },
+                data: {
+                    label: `${type}`, entity: null,
                     model_name: null, task_name: null, candidate_labels: null,
                     selectedModel: selectedModel, modelParameters: modelParameters,
-                    onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind},
+                    onDelete: deleteNode, onNameChange: handleNameChange, onModelSelect: handleModelSelection, onModelBind: handleModelBind, onDatasetBind: handleDatasetBind, onPreprocessBind: handlePreprocessBind
+                },
 
-                style: {backgroundColor: nodeTypeColorMap[nodeType]}
+                style: { backgroundColor: nodeTypeColorMap[nodeType] }
             };
             setNodes((nds) => nds.concat(newNode));
         }
@@ -1059,7 +1064,7 @@ function Inference() {
 
     const handleResume = () => {
         setButtonLoading(true);
-    
+
         const resumePipeline = async () => {
             try {
                 await axios.post("http://localhost:5001/resumePipeline", {}).then((response) => {
@@ -1073,14 +1078,14 @@ function Inference() {
                         console.error("Error resuming pipeline:", errorData.message);
                     }
                 })
-    
+
             } catch (error) {
                 console.error("Error resuming pipeline:", error);
             } finally {
                 setButtonLoading(false);
             }
         };
-    
+
         resumePipeline();
     };
 
@@ -1150,7 +1155,7 @@ function Inference() {
                 type: node.type,
                 position: {
                     x: 100 + (index * 250),
-                    y: 100 + (index*50)
+                    y: 100 + (index * 50)
                 },
                 data: {
                     label: node.data.label,
@@ -1167,7 +1172,7 @@ function Inference() {
                     onDatasetBind: handleDatasetBind,
                     onPreprocessBind: handlePreprocessBind
                 },
-                style: { 
+                style: {
                     backgroundColor: nodeTypeColorMap[node.type],
                 }
             };
@@ -1177,16 +1182,16 @@ function Inference() {
                 case 'preprocessing':
                     console.log("Processing preprocessing node:", node.data.entity);
                     baseNode.data.preprocessingType = node.data.preprocessingType;
-                    if(node.data.parameters) {
+                    if (node.data.parameters) {
                         baseNode.data.parameters = node.data.parameters;
                         console.log("Preprocessing node parameters:", node.data.parameters);
                     }
-                    else{
+                    else {
                         console.log("No parameters found for preprocessing node");
                     }
                     break;
                 case 'classification':
-                case 'regression': 
+                case 'regression':
                 case 'sentiment':
                 case 'imageclassification':
                     console.log("Processing model node:", model_map[node.data.entity]);
@@ -1230,21 +1235,21 @@ function Inference() {
                     alignItems: 'center',
                     height: '70vh'
                 }}>
-                    <CircularProgress/> <br/>
-                    <Typography variant="h6" style={{marginLeft: '10px'}}>
-                        Fetching Trained Models <br/>
+                    <CircularProgress /> <br />
+                    <Typography variant="h6" style={{ marginLeft: '10px' }}>
+                        Fetching Trained Models <br />
                     </Typography>
-                    <Typography variant="subtitle1" style={{marginLeft: '10px'}}>
+                    <Typography variant="subtitle1" style={{ marginLeft: '10px' }}>
                         Please wait...
                     </Typography>
                 </div>
             ) : (
-                <div sx={{flex: 1, flexDirection: "column"}}>
-                    <div style={{display: 'flex'}}>
-                        <InferenceNavbar handleOpen={handleOpenChatbot} style={{flex: 1}}/>
-                        <ChatbotModal 
-                            open={chatbotState} 
-                            handleClose={handleCloseChatbot} 
+                <div sx={{ flex: 1, flexDirection: "column" }}>
+                    <div style={{ display: 'flex' }}>
+                        <InferenceNavbar handleOpen={handleOpenChatbot} style={{ flex: 1 }} />
+                        <ChatbotModal
+                            open={chatbotState}
+                            handleClose={handleCloseChatbot}
                             onSendMessage={handleChatbotMessage}
                         />
                         <PreRunEvaluationDashboard
@@ -1265,9 +1270,9 @@ function Inference() {
                             validationResult={validationResult}
                             triggerValidation={runLocalValidation}
                         />
-                        <Modal 
-                            open={open} 
-                            onClose={() => setOpen(false)} 
+                        <Modal
+                            open={open}
+                            onClose={() => setOpen(false)}
                             hideBackdrop
                             style={{
                                 width: "90%",
@@ -1295,13 +1300,13 @@ function Inference() {
                                         tableClassName="table table-striped table-hover"
                                     />
                                 )}
-                                <div style={{ 
+                                <div style={{
                                     marginTop: '20px',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     padding: '0 20px'
                                 }}>
-                                    <Button 
+                                    <Button
                                         onClick={() => setOpen(false)}
                                         variant="outlined"
                                     >
@@ -1310,7 +1315,7 @@ function Inference() {
                                     <Button
                                         variant="contained"
                                         color="primary"
-                                        startIcon={<FileDownloadIcon/>}
+                                        startIcon={<FileDownloadIcon />}
                                         onClick={handleDownloadBatch}
                                     >
                                         Download Results
@@ -1319,7 +1324,7 @@ function Inference() {
                             </div>
                         </Modal>
                         <div className="dndflow"
-                             style={{flex: 1, marginTop: '63px', padding: '5px', border: 'solid', height: '100vh'}}>
+                            style={{ flex: 1, marginTop: '63px', padding: '5px', border: 'solid', height: '100vh' }}>
                             <ReactFlowProvider>
                                 <div className="reactflow-wrapper" ref={reactFlowWrapper}>
                                     <ReactFlow
@@ -1366,21 +1371,21 @@ function Inference() {
                                                     fontSize: "12px"
                                                 }}>Paste Pipeline</Button>
                                                 <Button onClick={handleSaveDialogOpen} variant="contained"
-                                                        disabled={saveButtonText !== defaultSaveText} style={{
-                                                    borderRadius: 20,
-                                                    backgroundColor: "#333333",
-                                                    padding: "5px 12px",
-                                                    fontSize: "12px"
-                                                }}>{saveButtonText}</Button>
+                                                    disabled={saveButtonText !== defaultSaveText} style={{
+                                                        borderRadius: 20,
+                                                        backgroundColor: "#333333",
+                                                        padding: "5px 12px",
+                                                        fontSize: "12px"
+                                                    }}>{saveButtonText}</Button>
                                                 <Button onClick={isPipelinePaused ? handleResume : handleRun} variant="contained" disabled={buttonLoading}
-                                                        style={{
-                                                            borderRadius: 20,
-                                                            backgroundColor: "#333333",
-                                                            padding: "5px 12px",
-                                                            fontSize: "12px"
-                                                        }}>
+                                                    style={{
+                                                        borderRadius: 20,
+                                                        backgroundColor: "#333333",
+                                                        padding: "5px 12px",
+                                                        fontSize: "12px"
+                                                    }}>
                                                     {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : isPreRunEvaluationComplete ? "Run" : "Run after Evaluate"}
-                                                    <PlayArrowIcon/>
+                                                    <PlayArrowIcon />
                                                 </Button>
                                                 {selectedEdge && (
                                                     <Button onClick={handleDeleteEdge} variant="outlined" style={{
@@ -1391,7 +1396,7 @@ function Inference() {
                                                         borderColor: "red"
                                                     }}>
                                                         Delete Edge
-                                                        <DeleteOutline/>
+                                                        <DeleteOutline />
                                                     </Button>
                                                 )}
                                             </div>
@@ -1406,14 +1411,20 @@ function Inference() {
                                             handleClose={handlePasteDialogClose}
                                             handlePaste={handlePastePipeline}
                                         />
-                                        <Background/>
-                                        <Controls/>
+                                        <Background />
+                                        <Controls />
                                         <MetricsOverlay
                                             hoveredNodeInfo={hoveredNodeInfo}
                                             pipelineRunning={buttonLoading}
                                             pipelinePaused={isPipelinePaused}
                                         />
                                     </ReactFlow>
+                                    <PipelineLegendDashboard
+                                        nodes={nodes}
+                                        edges={edges}
+                                        pipelineRunning={buttonLoading}
+                                        pipelinePaused={isPipelinePaused}
+                                    />
                                 </div>
                             </ReactFlowProvider>
                         </div>
@@ -1428,19 +1439,19 @@ function Inference() {
 // Add this helper function if not already present
 const convertResultsToCSV = (results) => {
     if (!Array.isArray(results)) return '';
-    
+
     // Get headers from first result object
     const headers = Object.keys(results[0]);
-    
+
     // Create CSV string with headers
     let csvString = headers.join(',') + '\n';
-    
+
     // Add each row of data
     results.forEach(row => {
         const values = headers.map(header => row[header]);
         csvString += values.join(',') + '\n';
     });
-    
+
     return csvString;
 };
 

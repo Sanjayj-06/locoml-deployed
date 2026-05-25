@@ -114,8 +114,12 @@ def getTrainedModel(model_id):
     print(model_id)
     collection = db["Model_zoo"]
     trained_model = collection.find_one({"model_id": model_id})
+    if not trained_model:
+        return {"error": f"Model '{model_id}' not found"}, 404
+
     # sort version array according to the date
-    trained_model["versions"].sort(key=lambda x: x["time"], reverse=True)
+    if "versions" in trained_model and isinstance(trained_model["versions"], list):
+        trained_model["versions"].sort(key=lambda x: x["time"], reverse=True)
     return json_util.dumps(trained_model)
 
 
