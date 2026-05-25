@@ -41,7 +41,7 @@ const ResolverAssistantPanel = ({
     setLoading(true);
     const welcomeMsg = {
       sender: "assistant",
-      text: "Hello! I am your Resolver Assistant. I've detected some deterministic validation issues in your pipeline. Let me analyze them for you..."
+      text: "Hello! I am your Resolver. I've detected some deterministic validation issues in your pipeline. Let me analyze them for you..."
     };
     setMessages([welcomeMsg]);
 
@@ -171,9 +171,8 @@ const ResolverAssistantPanel = ({
         }}
       >
         <Box display="flex" alignItems="center">
-          <PsychologyIcon style={{ marginRight: "10px", color: "#818cf8" }} />
           <Typography variant="h6" style={{ fontWeight: "bold", fontSize: "16px" }}>
-            Resolver Assistant Copilot
+            Resolver
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" style={{ color: "#ffffff" }}>

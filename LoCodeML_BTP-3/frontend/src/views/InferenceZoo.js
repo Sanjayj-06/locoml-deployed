@@ -1,6 +1,7 @@
 import React from "react";
 import axios from "axios";
-import {CircularProgress, Typography} from "@mui/material";
+import {CircularProgress, Typography, Button} from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import {Row, Col} from "reactstrap";
 
 function InferenceZoo() {
@@ -25,28 +26,32 @@ function InferenceZoo() {
     const CHUNK_SIZE = 3 // number of items in one row to be displayed on the page
 
     React.useEffect(() => {
-        axios.get(process.env.REACT_APP_INFERENCE_PIPELINE_ZOO_GET_PIPELINES + `/?page=${pageNum}&limit=${pageLimit}`)
+        const getPipelinesUrl = process.env.REACT_APP_INFERENCE_PIPELINE_ZOO_GET_PIPELINES || "http://localhost:5005/getPipelinesList";
+        axios.get(getPipelinesUrl + `/?page=${pageNum}&limit=${pageLimit}`)
             .then(async (response) => {
                 console.log(response.data);
                 const temp = [];
-                for (let i = 0; i < response.data.inference_pipelines.length; i++) {
-                    try {
-                        let pipeline = response.data.inference_pipelines[i];
-                        if (typeof pipeline === "string") pipeline = JSON.parse(pipeline);
-                        temp.push(pipeline);
-                    } catch (error) {
-                        console.log(error);
-                        console.error(`Invalid JSON in response.data.inference_pipelines[${i}]:`, response.data.inference_pipelines[i]);
+                if (response.data && Array.isArray(response.data.inference_pipelines)) {
+                    for (let i = 0; i < response.data.inference_pipelines.length; i++) {
+                        try {
+                            let pipeline = response.data.inference_pipelines[i];
+                            if (typeof pipeline === "string") pipeline = JSON.parse(pipeline);
+                            temp.push(pipeline);
+                        } catch (error) {
+                            console.log(error);
+                            console.error(`Invalid JSON in response.data.inference_pipelines[${i}]:`, response.data.inference_pipelines[i]);
+                        }
                     }
                 }
                 setInferencePipelines(temp);
                 const chunks = chunkArray(temp, CHUNK_SIZE);
                 setPipelineChunks(chunks);
-                setTotalNumPages(response.data.total_pages);
+                setTotalNumPages(response.data.total_pages || 1);
                 setLoading(false);
             })
             .catch((error) => {
-                console.log(error);
+                console.error("Failed to fetch saved pipelines:", error);
+                setLoading(false);
             })
     }, [pageNum]);
 
@@ -77,6 +82,16 @@ function InferenceZoo() {
         }
     };
 
+    const handleCopyLink = (pipelineId) => {
+        const link = `${window.location.origin}/pipeline/${pipelineId}`;
+        navigator.clipboard.writeText(link).then(() => {
+            alert('Pipeline link copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert(`Copy this pipeline ID: ${pipelineId}`);
+        });
+    };
+
 
     return (<div className="content">
         {loading ? <div style={{
@@ -96,10 +111,22 @@ function InferenceZoo() {
                 return (<Row style={{marginBottom: "1.5rem"}}>
                     {pipelineChunk.map((pipeline, index) => {
                         return (<Col md="4">
-                            <ul>
-                                <li key={index}><a href={`/pipeline/${pipeline.pipeline_id}`}>{pipeline.pipeline_name} ({pipeline.pipeline_id})</a>
-                                </li>
-                            </ul>
+                             <ul>
+                                 <li key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                     <a href={`/pipeline/${pipeline.pipeline_id}`} style={{ marginRight: '10px', color: '#3345dd', fontWeight: '600', textDecoration: 'none' }}>
+                                         {pipeline.pipeline_name} ({pipeline.pipeline_id})
+                                     </a>
+                                     <Button 
+                                         size="small" 
+                                         variant="outlined" 
+                                         startIcon={<ContentCopyIcon style={{ fontSize: '12px' }} />}
+                                         style={{ borderRadius: '15px', textTransform: 'none', padding: '2px 8px', fontSize: '11px', color: '#333333', borderColor: '#cccccc' }}
+                                         onClick={() => handleCopyLink(pipeline.pipeline_id)}
+                                     >
+                                         Copy Link
+                                     </Button>
+                                 </li>
+                             </ul>
                         </Col>)
                     })}
                 </Row>);

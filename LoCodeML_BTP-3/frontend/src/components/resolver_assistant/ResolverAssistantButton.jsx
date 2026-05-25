@@ -24,7 +24,7 @@ const ResolverAssistantButton = ({ onClick, status = "IDLE" }) => {
     if (status === "FIXING") {
       return <CircularProgress size={16} style={{ color: "#ffffff", marginRight: "4px" }} />;
     }
-    return <PsychologyIcon />;
+    return null;
   };
 
   return (
@@ -46,7 +46,7 @@ const ResolverAssistantButton = ({ onClick, status = "IDLE" }) => {
         position: "relative"
       }}
     >
-      RESOLVER ASSISTANT
+      Resolver
       {status === "INVALID" && (
         <FiberManualRecordIcon
           style={{

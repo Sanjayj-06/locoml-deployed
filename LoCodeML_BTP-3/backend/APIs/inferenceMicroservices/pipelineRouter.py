@@ -21,9 +21,9 @@ from mongoDB import db
 
 load_dotenv(dotenv_path="../../.env")
 env_path = os.getenv("PROJECT_PATH")
-MASTER_SERVER_GETFILE_URL = os.getenv("MASTER_SERVER_GETFILE_URL")
-INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL = os.getenv("INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL")
-RUN_INFERENCE_PIPELINE_URL = os.getenv("RUN_INFERENCE_PIPELINE_URL")
+MASTER_SERVER_GETFILE_URL = os.getenv("MASTER_SERVER_GETFILE_URL") or "http://master_server:5001/getFile"
+INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL = os.getenv("INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL") or "http://pipeline_router:5005/retrievePipelineDetails"
+RUN_INFERENCE_PIPELINE_URL = os.getenv("RUN_INFERENCE_PIPELINE_URL") or "http://master_server:5001/nodeInfo"
 
 sys.path.append(env_path)
 

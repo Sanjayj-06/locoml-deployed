@@ -26,6 +26,7 @@ import regressionSelectorNode from "./customSelectorNodes/regressionSelectorNode
 import sentimentSelectorNode from "./customSelectorNodes/sentimentSelectorNode";
 import huggingFaceSelectorNode from "./customSelectorNodes/huggingFaceSelectorNode";
 import SaveInferencePipelineDialog from "./SaveInferencePipelineDialog";
+import PasteInferencePipelineDialog from "./PasteInferencePipelineDialog";
 import adapterSelectorNode from "./customSelectorNodes/adapterSelectorNode";
 import imageClassificationSelectorNode from "./customSelectorNodes/imageClassificationSelectorNode";
 import MetricsOverlay from "../components/pipeline/MetricsOverlay";
@@ -195,6 +196,7 @@ function Inference() {
     const defaultSaveText = "Save Pipeline";
     const [saveButtonText, setSaveButtonText] = useState(defaultSaveText);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+    const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
 
     const [isPipelinePaused, setIsPipelinePaused] = useState(false);
     const [hoveredNodeInfo, setHoveredNodeInfo] = useState(null);
@@ -282,6 +284,8 @@ function Inference() {
                 };
             }
             // Clear out bound model metadata from any model nodes to prevent stale compatibility validations
+            // Note: Disabled model resetting on dataset change to prevent annoying model deselection bug
+            /*
             if (datasetInfo.dataset_type !== 'manual' && ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(node.type)) {
                 return {
                     ...node,
@@ -304,6 +308,7 @@ function Inference() {
                     }
                 };
             }
+            */
             return node;
         });
 
@@ -969,6 +974,53 @@ function Inference() {
             });
     }
 
+    const handlePasteDialogOpen = () => {
+        setIsPasteDialogOpen(true);
+    };
+
+    const handlePasteDialogClose = () => {
+        setIsPasteDialogOpen(false);
+    };
+
+    const handlePastePipeline = async (pipelineId) => {
+        setIsPasteDialogOpen(false);
+        try {
+            const retrieveUrl = process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || "http://localhost:5005/retrievePipelineDetails";
+            const response = await axios.get(retrieveUrl + `/?pipeline_id=${pipelineId}`);
+            
+            let data = response.data;
+            if (typeof data === "string") data = JSON.parse(data);
+            
+            if (!data || !data.nodes || data.message) {
+                alert(data.message || "Pipeline ID not found in database.");
+                return;
+            }
+
+            // Re-bind node event handlers and metadata so they are fully functional
+            const loadedNodes = data.nodes.map(node => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    selectedModel: selectedModel,
+                    modelParameters: modelParameters,
+                    onDelete: deleteNode,
+                    onNameChange: handleNameChange,
+                    onModelSelect: handleModelSelection,
+                    onModelBind: handleModelBind,
+                    onDatasetBind: handleDatasetBind,
+                    onPreprocessBind: handlePreprocessBind
+                }
+            }));
+
+            setNodes(loadedNodes);
+            setEdges(data.edges || []);
+            alert("Pipeline loaded and pasted successfully!");
+        } catch (error) {
+            console.error("Failed to paste pipeline:", error);
+            alert("Failed to retrieve pipeline. Make sure the backend microservices are running.");
+        }
+    };
+
     const createPresetPipeline = (presetType, event) => {
         const position = reactFlowInstance.project({
             x: event.clientX,
@@ -1292,58 +1344,67 @@ function Inference() {
                                         elementsSelectable={!buttonLoading}
                                     >
                                         <Panel position="top-right">
-                                            <ResolverAssistantButton onClick={handleOpenResolverAssistant} status={resolverStatus} />
-                                            <Button onClick={handleOpenEvaluation} variant="outlined" style={{
-                                                borderRadius: 20,
-                                                borderColor: "#3345dd",
-                                                color: "#3345dd",
-                                                padding: "5px 10px",
-                                                fontSize: "12px",
-                                                marginRight: "5px"
-                                            }}>Evaluate Model</Button>
-                                            <Button onClick={handleOpenChatbot} variant="contained" style={{
-                                                borderRadius: 20,
-                                                backgroundColor: "#3345dd",
-                                                padding: "5px 10px",
-                                                fontSize: "12px",
-                                                marginRight: "5px"
-                                            }}>Pipeline LLM</Button>
-                                            <Button onClick={handleSaveDialogOpen} variant="contained"
-                                                    disabled={saveButtonText !== defaultSaveText} style={{
-                                                borderRadius: 20,
-                                                backgroundColor: "#333333",
-                                                padding: "5px 12px",
-                                                fontSize: "12px"
-                                            }}>{saveButtonText}</Button>
-                                            <Button onClick={isPipelinePaused ? handleResume : handleRun} variant="contained" disabled={buttonLoading}
-                                                    style={{
-                                                        borderRadius: 20,
-                                                        backgroundColor: "#333333",
-                                                        padding: "5px 12px",
-                                                        fontSize: "12px"
-                                                    }}>
-                                                {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : isPreRunEvaluationComplete ? "Run" : "Run after Evaluate"}
-                                                <PlayArrowIcon/>
-                                            </Button>
-                                            {selectedEdge && (
-                                                <Button onClick={handleDeleteEdge} variant="outlined" style={{
-                                                    borderRadius: 35,
-                                                    padding: "10px 20px",
-                                                    marginLeft: "10px",
-                                                    fontSize: "18px",
-                                                    color: "red",
-                                                    borderColor: "red"
-                                                }}>
-                                                    Delete Edge
-                                                    <DeleteOutline/>
+                                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                                                <ResolverAssistantButton onClick={handleOpenResolverAssistant} status={resolverStatus} />
+                                                <Button onClick={handleOpenEvaluation} variant="outlined" style={{
+                                                    borderRadius: 20,
+                                                    borderColor: "#3345dd",
+                                                    color: "#3345dd",
+                                                    padding: "5px 10px",
+                                                    fontSize: "12px"
+                                                }}>Evaluate Model</Button>
+                                                <Button onClick={handleOpenChatbot} variant="contained" style={{
+                                                    borderRadius: 20,
+                                                    backgroundColor: "#3345dd",
+                                                    padding: "5px 10px",
+                                                    fontSize: "12px"
+                                                }}>Pipeline LLM</Button>
+                                                <Button onClick={handlePasteDialogOpen} variant="contained" style={{
+                                                    borderRadius: 20,
+                                                    backgroundColor: "#333333",
+                                                    padding: "5px 12px",
+                                                    fontSize: "12px"
+                                                }}>Paste Pipeline</Button>
+                                                <Button onClick={handleSaveDialogOpen} variant="contained"
+                                                        disabled={saveButtonText !== defaultSaveText} style={{
+                                                    borderRadius: 20,
+                                                    backgroundColor: "#333333",
+                                                    padding: "5px 12px",
+                                                    fontSize: "12px"
+                                                }}>{saveButtonText}</Button>
+                                                <Button onClick={isPipelinePaused ? handleResume : handleRun} variant="contained" disabled={buttonLoading}
+                                                        style={{
+                                                            borderRadius: 20,
+                                                            backgroundColor: "#333333",
+                                                            padding: "5px 12px",
+                                                            fontSize: "12px"
+                                                        }}>
+                                                    {buttonLoading ? "Running..." : isPipelinePaused ? "Resume" : isPreRunEvaluationComplete ? "Run" : "Run after Evaluate"}
+                                                    <PlayArrowIcon/>
                                                 </Button>
-                                            )}
-
+                                                {selectedEdge && (
+                                                    <Button onClick={handleDeleteEdge} variant="outlined" style={{
+                                                        borderRadius: 20,
+                                                        padding: "5px 12px",
+                                                        fontSize: "12px",
+                                                        color: "red",
+                                                        borderColor: "red"
+                                                    }}>
+                                                        Delete Edge
+                                                        <DeleteOutline/>
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </Panel>
                                         <SaveInferencePipelineDialog
                                             open={isSaveDialogOpen}
                                             handleClose={handleSaveDialogClose}
                                             handleSave={handleSavePipeline}
+                                        />
+                                        <PasteInferencePipelineDialog
+                                            open={isPasteDialogOpen}
+                                            handleClose={handlePasteDialogClose}
+                                            handlePaste={handlePastePipeline}
                                         />
                                         <Background/>
                                         <Controls/>

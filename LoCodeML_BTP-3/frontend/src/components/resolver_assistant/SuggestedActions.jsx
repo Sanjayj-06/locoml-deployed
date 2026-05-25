@@ -55,7 +55,6 @@ const SuggestedActions = ({ actions, onApply }) => {
       }}
     >
       <Box display="flex" alignItems="center" mb={1.5}>
-        <AutoFixHighIcon style={{ color: "#6366f1", marginRight: "8px" }} />
         <Typography variant="subtitle1" style={{ fontWeight: "bold", color: "#1f2937" }}>
           Suggested Fixes
         </Typography>

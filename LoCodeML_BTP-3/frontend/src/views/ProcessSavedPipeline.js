@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect} from "react";
-import {useMatch} from "react-router-dom";
+import {useMatch, useNavigate} from "react-router-dom";
 import axios from "axios";
 import {CircularProgress, Modal, Typography} from "@mui/material";
 import {Button} from "antd";
@@ -10,6 +10,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 function ProcessSavedPipeline() {
     const match = useMatch("/pipeline/:pipeline_id");
+    const navigate = useNavigate();
     const pipeline_id = match?.params.pipeline_id.replaceAll("%20", " ");
     const [loading, setLoading] = useState(true);
     const [inferencePipeline, setInferencePipeline] = useState({
@@ -32,7 +33,8 @@ function ProcessSavedPipeline() {
     const [showCURLCommand, setShowCURLCommand] = useState([]);
 
     useEffect(() => {
-        axios.get(process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS + `/?pipeline_id=${pipeline_id}`)
+        const retrieveUrl = process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || "http://localhost:5005/retrievePipelineDetails";
+        axios.get(retrieveUrl + `/?pipeline_id=${pipeline_id}`)
             .then(async (response) => {
                 let data = response.data;
                 if (typeof response.data === "string") data = JSON.parse(data);
@@ -55,7 +57,8 @@ function ProcessSavedPipeline() {
                 console.log(inputDataNodes);
             })
             .catch((error) => {
-                console.log(error);
+                console.error("Failed to fetch pipeline details:", error);
+                setLoading(false);
             })
     }, [pipeline_id]);
 
@@ -68,7 +71,8 @@ function ProcessSavedPipeline() {
         formData.append('filename', file.name);
         formData.append('nodeid', inputBlockList[index].id);
 
-        await axios.post(process.env.REACT_APP_MASTER_SERVER_GET_INPUT_FILE, formData, {
+        const getFileInputUrl = process.env.REACT_APP_MASTER_SERVER_GET_INPUT_FILE || "http://localhost:5001/getFile";
+        await axios.post(getFileInputUrl, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             }
@@ -98,7 +102,8 @@ function ProcessSavedPipeline() {
 
         const callMaster = async () => {
             try {
-                const response = await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
+                const runPipelineUrl = process.env.REACT_APP_RUN_INFERENCE_PIPELINE || "http://localhost:5001/nodeInfo";
+                const response = await axios.post(runPipelineUrl, {
                     nodes: nodes,
                     edges: edges
                 });
@@ -164,6 +169,29 @@ function ProcessSavedPipeline() {
                 </div>
             ) : (
                 <>
+                    <div style={{ marginBottom: "20px" }}>
+                        <Button 
+                            onClick={() => navigate("/pipelines")} 
+                            style={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                gap: "6px", 
+                                height: "35px", 
+                                borderRadius: "18px", 
+                                backgroundColor: "#ffffff", 
+                                color: "#333333", 
+                                border: "1px solid #cccccc", 
+                                fontSize: "14px", 
+                                padding: "0 15px",
+                                cursor: "pointer",
+                                boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                                textTransform: "none",
+                                fontWeight: "500"
+                            }}
+                        >
+                            ← Back to Inference Zoo
+                        </Button>
+                    </div>
                     {inputBlockList.map((inputBlock, index) => (
                         <div key={index}>
                             {inputBlock.name === "" ? `ID: ${inputBlock.id}` : `Name: ${inputBlock.name}`}
