@@ -34,6 +34,7 @@ class PromptBuilder:
             "Supported node_types are: 'inputData', 'preprocessing', 'adapter', 'classification', 'regression', 'sentiment', 'imageclassification'.\n\n"
             "CRITICAL RULES:\n"
             "- Never silently perform changes. The user owns the graph. Always explain the actions in your conversational text.\n"
+            "- If the pipeline uses 'manual' input parameter entry (where dataset_type is 'manual'), preprocessing is not required and must be deleted. Suggest deleting the preprocessing node and connecting the input node directly to the model node using add_edge.\n"
             "- Keep your tone professional, encouraging, and helpful. Be clear and direct."
         )
 

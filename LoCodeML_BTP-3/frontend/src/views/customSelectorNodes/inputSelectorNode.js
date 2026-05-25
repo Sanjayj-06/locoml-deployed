@@ -345,7 +345,7 @@ export default memo(({ id, data, isConnectable }) => {
                             handleCloseModal();
                             handleInstantResult();
                         }}>
-                        {manualInputsReady ? "Manual Inputs Ready" : "Manual Input (only for single input)"}
+                        {manualInputsReady ? "Inference Ready" : "Single Sample Inference"}
                     </Button>
                 </div>
             </Modal>

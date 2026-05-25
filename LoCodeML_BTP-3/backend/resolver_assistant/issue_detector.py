@@ -515,6 +515,39 @@ class IssueDetector:
                         "suggested_fix": f"Upload a dataset containing expected features: {', '.join(missing_cols)}."
                     })
 
+        # --- RULE 4: MANUAL INPUT PREPROCESSING BYPASS ---
+        is_manual = False
+        if dataset_meta and dataset_meta.get("dataset_type") == "manual":
+            is_manual = True
+        else:
+            input_nodes = [n for n in nodes if n.get('type') == 'inputData' or n.get('data', {}).get('label') == 'Inputs']
+            if input_nodes:
+                ent = input_nodes[0].get('data', {}).get('entity')
+                if isinstance(ent, dict) and ent.get('dataset_type') == 'manual':
+                    is_manual = True
+                elif input_nodes[0].get('data', {}).get('dataset_type') == 'manual':
+                    is_manual = True
+
+        if is_manual:
+            preprocessing_nodes = [n for n in nodes if n.get('type') == 'preprocessing' or n.get('data', {}).get('label') == 'Preprocessing']
+            input_nodes = [n for n in nodes if n.get('type') == 'inputData' or n.get('data', {}).get('label') == 'Inputs']
+            model_nodes = [n for n in nodes if n.get('type') in ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']]
+            
+            input_node_id = input_nodes[0]['id'] if input_nodes else None
+            model_node_id = model_nodes[0]['id'] if model_nodes else None
+
+            for pn in preprocessing_nodes:
+                issues.append({
+                    "id": f"manual_input_preprocessing_{pn['id']}",
+                    "type": "PREPROCESSING_NOT_REQUIRED",
+                    "severity": "error",
+                    "message": "Preprocessing is not required when using manual single input parameter entry. Please remove this preprocessing node and connect the Input node directly to the Model node.",
+                    "node_id": pn['id'],
+                    "suggested_fix": "Remove the preprocessing node and connect the input node directly to the model node.",
+                    "input_node_id": input_node_id,
+                    "model_node_id": model_node_id,
+                    "preprocessing_node_id": pn['id']
+                })
 
         return issues
 

@@ -1314,7 +1314,48 @@ class TestResolverAssistantValidation(unittest.TestCase):
             }
         ]
         inferred = IssueDetector.infer_dataset_task(dataset_meta, nodes)
-        self.assertIsNone(inferred)
+    def test_manual_input_preprocessing_bypass(self):
+        from resolver_assistant.issue_detector import IssueDetector
+        dataset_meta = {
+            "dataset_type": "manual"
+        }
+        nodes = [
+            {
+                "id": "node_input",
+                "type": "inputData",
+                "data": {
+                    "label": "Inputs",
+                    "dataset_type": "manual",
+                    "entity": {
+                        "dataset_type": "manual",
+                        "manual_inputs": {"sqft": 1000}
+                    }
+                }
+            },
+            {
+                "id": "node_prep",
+                "type": "preprocessing",
+                "data": {"label": "Preprocessing", "preprocessingType": "csv"}
+            },
+            {
+                "id": "node_model",
+                "type": "regression",
+                "task_type": "REGRESSION",
+                "model_id": "r_model",
+                "data": {"label": "Regression", "entity": {"model_id": "r_model"}}
+            }
+        ]
+        edges = [
+            {"id": "e1", "source": "node_input", "target": "node_prep"},
+            {"id": "e2", "source": "node_prep", "target": "node_model"}
+        ]
+        issues = IssueDetector.detect_issues(nodes, edges, dataset_meta)
+        
+        prep_issues = [i for i in issues if i["type"] == "PREPROCESSING_NOT_REQUIRED"]
+        self.assertEqual(len(prep_issues), 1)
+        self.assertEqual(prep_issues[0]["node_id"], "node_prep")
+        self.assertEqual(prep_issues[0]["input_node_id"], "node_input")
+        self.assertEqual(prep_issues[0]["model_node_id"], "node_model")
 
 if __name__ == '__main__':
     unittest.main()
