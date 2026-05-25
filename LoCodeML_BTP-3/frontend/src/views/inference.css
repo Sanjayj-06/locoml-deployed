@@ -505,4 +505,144 @@
     50% { opacity: 1; box-shadow: 0 0 10px rgba(59, 130, 246, 0.25); }
     100% { opacity: 0.85; }
   }
+
+  /* Tutorial Popup Styles */
+  .dashboard-tutorial-popup-wrapper {
+    animation: popupEntrance 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform-origin: left center;
+  }
+
+  .dashboard-tutorial-popup {
+    position: relative;
+    background: #ffffff;
+    border: 2px solid #1e293b;
+    border-radius: 18px;
+    padding: 16px;
+    width: 260px;
+    box-shadow: 0 12px 28px rgba(30, 41, 59, 0.15);
+    font-family: inherit;
+    animation: popupBob 4s ease-in-out infinite;
+  }
+
+  /* Speech bubble tail outer (border) */
+  .dashboard-tutorial-popup::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 28px;
+    border-width: 8px 12px 8px 0;
+    border-style: solid;
+    border-color: transparent #1e293b transparent transparent;
+    display: block;
+    width: 0;
+  }
+
+  /* Speech bubble tail inner (fill) */
+  .dashboard-tutorial-popup::after {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 28px;
+    border-width: 8px 12px 8px 0;
+    border-style: solid;
+    border-color: transparent #ffffff transparent transparent;
+    display: block;
+    width: 0;
+  }
+
+  .dashboard-tutorial-popup__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .dashboard-tutorial-popup__icon {
+    font-size: 18px;
+  }
+
+  .dashboard-tutorial-popup__title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dashboard-tutorial-popup__text {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.45;
+    margin: 0 0 12px 0;
+  }
+
+  .dashboard-tutorial-popup__footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .dashboard-tutorial-popup__btn {
+    background: #1e293b;
+    color: #ffffff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dashboard-tutorial-popup__btn:hover {
+    background: #334155;
+    transform: translateY(-1px);
+  }
+
+  .dashboard-tutorial-popup__btn:active {
+    transform: translateY(0);
+  }
+
+  .dashboard-tutorial-popup__close-icon {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    padding: 4px;
+    line-height: 1;
+  }
+
+  .dashboard-tutorial-popup__close-icon:hover {
+    color: #64748b;
+  }
+
+  @keyframes popupEntrance {
+    from {
+      opacity: 0;
+      transform: scale(0.8) translateX(-15px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateX(0);
+    }
+  }
+
+  @keyframes popupBob {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
   

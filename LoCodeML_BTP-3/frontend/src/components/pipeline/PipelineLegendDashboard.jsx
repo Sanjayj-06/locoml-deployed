@@ -76,10 +76,22 @@ const getStatusDetails = (hasEntity, pipelineRunning, pipelinePaused) => {
   };
 };
 
+let hasShownInSession = false;
+
 const PipelineLegendDashboard = ({ nodes = [], edges = [], pipelineRunning = false, pipelinePaused = false }) => {
   const [tick, setTick] = useState(0);
   const [position, setPosition] = useState({ x: 20, y: 120 });
   const [size, setSize] = useState({ width: 340, height: 320 });
+  const [showPopup, setShowPopup] = useState(!hasShownInSession);
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    hasShownInSession = true;
+  };
+
+  useEffect(() => {
+    hasShownInSession = true;
+  }, []);
 
   useEffect(() => {
     if (!pipelineRunning) {
@@ -169,9 +181,10 @@ const PipelineLegendDashboard = ({ nodes = [], edges = [], pipelineRunning = fal
   };
 
   return (
-    <div 
-      className="pipeline-legend-dashboard"
-      style={{
+    <>
+      <div 
+        className="pipeline-legend-dashboard"
+        style={{
         left: position.x,
         top: position.y,
         width: size.width,
@@ -244,7 +257,42 @@ const PipelineLegendDashboard = ({ nodes = [], edges = [], pipelineRunning = fal
       <div className="pipeline-legend__resizeHandle pipeline-legend__resizeHandle--bl" onMouseDown={(e) => handleResizeMouseDown(e, 'bl')} />
       <div className="pipeline-legend__resizeHandle pipeline-legend__resizeHandle--br" onMouseDown={(e) => handleResizeMouseDown(e, 'br')} />
     </div>
-  );
+
+    {showPopup && (
+      <div 
+        className="dashboard-tutorial-popup-wrapper"
+        style={{
+          position: 'absolute',
+          left: position.x + size.width + 16,
+          top: position.y + 15,
+          zIndex: 1000,
+          pointerEvents: 'auto'
+        }}
+      >
+        <div className="dashboard-tutorial-popup">
+          <button 
+            className="dashboard-tutorial-popup__close-icon"
+            onClick={handleClosePopup}
+            title="Dismiss"
+          >
+            ×
+          </button>
+          <div className="dashboard-tutorial-popup__header">
+            <span className="dashboard-tutorial-popup__title">Dashboard Info</span>
+          </div>
+          <p className="dashboard-tutorial-popup__text">
+            Hi! I am fully <strong>resizable</strong> and <strong>movable</strong>! Drag my header to move, or drag any corner handle to resize me.
+          </p>
+          <div className="dashboard-tutorial-popup__footer">
+            <button className="dashboard-tutorial-popup__btn" onClick={handleClosePopup}>
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
 };
 
 export default PipelineLegendDashboard;
