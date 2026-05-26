@@ -22,6 +22,7 @@ import { CheckCircleOutline } from '@mui/icons-material';
 import OpenAPIComponent from 'components/OpenAPI/OpenAPISpec';
 import saveAs from 'file-saver';
 import SpeedIcon from '@mui/icons-material/Speed';
+import DeleteIcon from '@mui/icons-material/Delete';
 import StressTestModal from './StressTestModal';
 
 const style = {
@@ -149,9 +150,27 @@ const ModelCard = (props) => {
 
     const [modelDeployed, setModelDeployed] = React.useState(false);
     const [stressTestModalOpen, setStressTestModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
     const onClickStressTest = () => {
         setStressTestModalOpen(true);
+    };
+
+    const onClickDelete = () => {
+        setDeleteModalOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        setDeleteModalOpen(false);
+        axios.delete("/deleteModel/" + modelDetails.model_id)
+            .then((res) => {
+                alert("Model deleted successfully!");
+                window.location.reload();
+            })
+            .catch((err) => {
+                console.error("Failed to delete model:", err);
+                alert("Failed to delete model: " + (err.response?.data?.error || err.message));
+            });
     };
 
     useEffect(() => {
@@ -330,29 +349,88 @@ const ModelCard = (props) => {
                         </Row>
                     </Box>
                 </CardContent>
-                <CardActions style={{ justifyContent: 'space-around', flexWrap: 'wrap', gap: '8px' }}>
-                    <Button size="small" color="info" onClick={() => { window.location.href = "/models/" + modelDetails.model_id }}>
-                        <InfoIcon /> Details
-                    </Button>
-                    <Button
-                        size="small"
-                        style={{ backgroundColor: '#ffab05', color: 'black' }}
-                        onClick={() => { window.location.href = "/update/model/" + modelDetails.model_id }}
-                    >
-                        <UpdateIcon /> Update
-                    </Button>
-                    <Button size="small"
-                        style={{ backgroundColor: '#80c55d', color: 'black' }}
-                        onClick={() => { onClickDeploy() }}>
-                        <PublishIcon /> Deploy
-                    </Button>
-                    <Button size="small"
-                        style={{ backgroundColor: '#d32f2f', color: 'white' }}
-                        onClick={() => { window.location.href = "/stress-test/" + modelDetails.model_id }}>
-                        <SpeedIcon style={{ marginRight: '4px' }} /> Stress Test
-                    </Button>
+                <CardActions style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '12px' }}>
+                    <div style={{ width: '100%' }}>
+                        <Row style={{ marginBottom: '8px', gap: '0px', marginLeft: '-4px', marginRight: '-4px' }}>
+                            <Col xs="4" style={{ padding: '0 4px' }}>
+                                <Button block size="sm" color="info" style={{ width: '100%', margin: 0, padding: '8px 4px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { window.location.href = "/models/" + modelDetails.model_id }}>
+                                    <InfoIcon style={{ fontSize: '15px', marginRight: '2px' }} /> Details
+                                </Button>
+                            </Col>
+                            <Col xs="4" style={{ padding: '0 4px' }}>
+                                <Button
+                                    block
+                                    size="sm"
+                                    style={{ backgroundColor: '#ffab05', color: 'black', width: '100%', margin: 0, padding: '8px 4px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => { window.location.href = "/update/model/" + modelDetails.model_id }}
+                                >
+                                    <UpdateIcon style={{ fontSize: '15px', marginRight: '2px' }} /> Update
+                                </Button>
+                            </Col>
+                            <Col xs="4" style={{ padding: '0 4px' }}>
+                                <Button 
+                                    block 
+                                    size="sm"
+                                    style={{ backgroundColor: '#80c55d', color: 'black', width: '100%', margin: 0, padding: '8px 4px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => { onClickDeploy() }}
+                                >
+                                    <PublishIcon style={{ fontSize: '15px', marginRight: '2px' }} /> Deploy
+                                </Button>
+                            </Col>
+                        </Row>
+                        <Row style={{ gap: '0px', marginLeft: '-4px', marginRight: '-4px' }}>
+                            <Col xs="6" style={{ padding: '0 4px' }}>
+                                <Button 
+                                    block 
+                                    size="sm"
+                                    style={{ backgroundColor: '#47566a', color: 'white', width: '100%', margin: 0, padding: '8px 4px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => { window.location.href = "/stress-test/" + modelDetails.model_id }}
+                                >
+                                    <SpeedIcon style={{ fontSize: '15px', marginRight: '2px' }} /> Stress Test
+                                </Button>
+                            </Col>
+                            <Col xs="6" style={{ padding: '0 4px' }}>
+                                <Button 
+                                    block 
+                                    size="sm"
+                                    style={{ backgroundColor: '#dc3545', color: 'white', width: '100%', margin: 0, padding: '8px 4px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => onClickDelete()}
+                                >
+                                    <DeleteIcon style={{ fontSize: '15px', marginRight: '2px' }} /> Delete
+                                </Button>
+                            </Col>
+                        </Row>
+                    </div>
                 </CardActions>
             </Card>
+
+            <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)}>
+                <Box sx={style}>
+                    <Typography id="modal-delete-title" variant="h5"
+                        style={{ textAlign: "center", marginBottom: '1.5rem', color: '#dc3545', fontWeight: 'bold' }}
+                    >
+                        Delete Model
+                    </Typography>
+                    <Typography
+                        style={{ textAlign: "center", marginBottom: '1.2rem', fontSize: '16px' }}
+                    >
+                        Are you sure you want to permanently delete model <strong>{modelDetails.model_name}</strong> (ID: {modelDetails.model_id})?
+                    </Typography>
+                    <Typography
+                        style={{ textAlign: "center", marginBottom: '1.8rem', fontSize: '14px', color: '#666' }}
+                    >
+                        This action cannot be undone. All associated model files, pipelines, metadata, versions, and stress reports will be permanently deleted.
+                    </Typography>
+                    <Row>
+                        <Col md="6" style={{ textAlign: "center" }}>
+                            <Button block color="secondary" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+                        </Col>
+                        <Col md="6" style={{ textAlign: "center" }}>
+                            <Button block style={{ backgroundColor: '#dc3545', color: 'white' }} onClick={() => handleDeleteConfirm()}>Delete</Button>
+                        </Col>
+                    </Row>
+                </Box>
+            </Modal>
 
             <Modal open={downloadModalOpen} onClose={() => setDownloadModalOpen(false)}>
                 <Box sx={style}>

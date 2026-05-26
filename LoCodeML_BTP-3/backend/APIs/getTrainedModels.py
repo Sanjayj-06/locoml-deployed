@@ -168,3 +168,66 @@ def validate_model():
             return False
         
     return True
+
+
+@getTrainedModels.route("/deleteModel/<model_id>", methods=["DELETE"])
+def deleteModel(model_id):
+    try:
+        collection = db["Model_zoo"]
+        trained_model = collection.find_one({"model_id": model_id})
+        if not trained_model:
+            return {"error": f"Model '{model_id}' not found"}, 404
+
+        # 1. Collect all model file paths to delete
+        file_paths = []
+        model_ids_to_clean = [model_id]
+        
+        main_path = trained_model.get("saved_model_path")
+        if main_path:
+            file_paths.append(main_path)
+            
+        # Collect paths and model_ids from versions
+        versions = trained_model.get("versions", [])
+        if isinstance(versions, list):
+            for v in versions:
+                v_path = v.get("saved_model_path")
+                if v_path:
+                    file_paths.append(v_path)
+                v_id = v.get("model_id")
+                if v_id and v_id not in model_ids_to_clean:
+                    model_ids_to_clean.append(v_id)
+
+        # Also add metadata JSON file path
+        project_path = os.getenv("PROJECT_PATH", "")
+        metadata_json_path = os.path.join(project_path, "Models", f"{model_id}_metadata.json")
+        file_paths.append(metadata_json_path)
+
+        # 2. Delete all model files from filesystem
+        for p in file_paths:
+            if not p:
+                continue
+            # Resolve path if relative
+            resolved_p = p
+            if not os.path.isabs(p):
+                idx = p.find("Models")
+                if idx != -1:
+                    resolved_p = os.path.join(project_path, p[idx:])
+                else:
+                    resolved_p = os.path.join(project_path, p)
+            
+            resolved_p = resolved_p.replace("\\", "/")
+            if os.path.exists(resolved_p):
+                try:
+                    os.remove(resolved_p)
+                except Exception as e:
+                    print(f"[DELETE MODEL] Error removing file {resolved_p}: {str(e)}")
+
+        # 3. Clean up DB records
+        collection.delete_one({"model_id": model_id})
+        db["Stress_reports"].delete_many({"model_id": {"$in": model_ids_to_clean}})
+
+        return {"message": f"Model '{model_id}' and all associated files/artifacts deleted successfully"}, 200
+
+    except Exception as e:
+        print(f"[DELETE MODEL ERROR] {str(e)}")
+        return {"error": str(e)}, 500
