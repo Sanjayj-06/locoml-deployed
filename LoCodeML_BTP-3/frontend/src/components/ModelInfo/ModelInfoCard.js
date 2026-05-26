@@ -21,6 +21,8 @@ import DialogContent from '@mui/material/DialogContent';
 import { CheckCircleOutline } from '@mui/icons-material';
 import OpenAPIComponent from 'components/OpenAPI/OpenAPISpec';
 import saveAs from 'file-saver';
+import SpeedIcon from '@mui/icons-material/Speed';
+import StressTestModal from './StressTestModal';
 
 const style = {
     position: 'absolute',
@@ -146,6 +148,11 @@ const ModelCard = (props) => {
     const [downloadedModel, setDownloadedModel] = useState();
 
     const [modelDeployed, setModelDeployed] = React.useState(false);
+    const [stressTestModalOpen, setStressTestModalOpen] = useState(false);
+
+    const onClickStressTest = () => {
+        setStressTestModalOpen(true);
+    };
 
     useEffect(() => {
         setMetricNames(getMetricNames());
@@ -323,22 +330,26 @@ const ModelCard = (props) => {
                         </Row>
                     </Box>
                 </CardContent>
-                <CardActions style={{ justifyContent: 'space-between' }}>
+                <CardActions style={{ justifyContent: 'space-around', flexWrap: 'wrap', gap: '8px' }}>
                     <Button size="small" color="info" onClick={() => { window.location.href = "/models/" + modelDetails.model_id }}>
-                        <InfoIcon />
-                        View Details
+                        <InfoIcon /> Details
                     </Button>
                     <Button
                         size="small"
                         style={{ backgroundColor: '#ffab05', color: 'black' }}
                         onClick={() => { window.location.href = "/update/model/" + modelDetails.model_id }}
                     >
-                        <UpdateIcon />   Update
+                        <UpdateIcon /> Update
                     </Button>
                     <Button size="small"
                         style={{ backgroundColor: '#80c55d', color: 'black' }}
                         onClick={() => { onClickDeploy() }}>
                         <PublishIcon /> Deploy
+                    </Button>
+                    <Button size="small"
+                        style={{ backgroundColor: '#d32f2f', color: 'white' }}
+                        onClick={() => { window.location.href = "/stress-test/" + modelDetails.model_id }}>
+                        <SpeedIcon style={{ marginRight: '4px' }} /> Stress Test
                     </Button>
                 </CardActions>
             </Card>
@@ -683,6 +694,7 @@ const ModelCard = (props) => {
             </Modal>
 
 
+            
         </>
 
     )

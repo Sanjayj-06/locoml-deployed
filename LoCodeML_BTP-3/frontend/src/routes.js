@@ -29,6 +29,7 @@ import Delete from "views/Delete";
 import UpdateModel from "views/UpdateModel";
 import InferenceZoo from "./views/InferenceZoo";
 import ProcessSavedPipeline from "./views/ProcessSavedPipeline";
+import StressTest from "views/StressTest";
 
 var routes = [
   {
@@ -97,6 +98,12 @@ var routes = [
     name: "Update Model",
     showInSidebar: false,
     component: <UpdateModel />,
+  },
+  {
+    path: "/stress-test/:model_id",
+    name: "Stress Test",
+    showInSidebar: false,
+    component: <StressTest />,
   },
   {
     path: "/pipelines",

@@ -18,6 +18,7 @@ from APIs.img_preprocess import img_preprocess
 from APIs.apply_preprocessing import apply_preprocess
 from APIs.pipelineGenerator import pipelineGenerator
 from APIs.processQuery import processQuery
+from APIs.stressTest import stressTestAPIs
 
 app = Flask(__name__)
 CORS(app)
@@ -39,6 +40,7 @@ app.register_blueprint(img_preprocess)
 app.register_blueprint(apply_preprocess)
 app.register_blueprint(pipelineGenerator)
 app.register_blueprint(processQuery)
+app.register_blueprint(stressTestAPIs)
 
 app.config['REDIS_URL'] = os.getenv('REDIS_URL')
 
