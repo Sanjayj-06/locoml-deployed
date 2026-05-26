@@ -204,6 +204,7 @@ function Inference() {
     const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
     const [isPreRunEvaluationComplete, setIsPreRunEvaluationComplete] = useState(false);
     const [evaluatedPipelineSignature, setEvaluatedPipelineSignature] = useState("");
+    const [preRunServerSignature, setPreRunServerSignature] = useState("");
     const [isResolverOpen, setIsResolverOpen] = useState(false);
     const [selectedModel, setSelectedModel] = useState(null);
     const [validationResult, setValidationResult] = useState({ valid: true, issues: [] });
@@ -648,6 +649,7 @@ function Inference() {
         const currentSignature = buildEvaluationSignature(nodes, edges);
         if (currentSignature !== evaluatedPipelineSignature) {
             setIsPreRunEvaluationComplete(false);
+            setPreRunServerSignature("");
         }
     }, [nodes, edges, evaluatedPipelineSignature, isPreRunEvaluationComplete]);
 
@@ -666,9 +668,13 @@ function Inference() {
         setIsEvaluationDialogOpen(false);
     }
 
-    const handleEvaluationComplete = (signature) => {
-        setEvaluatedPipelineSignature(signature);
-        setIsPreRunEvaluationComplete(true);
+    const handleEvaluationComplete = (evaluationResult) => {
+        const localSignature = evaluationResult?.localSignature || "";
+        const serverSignature = evaluationResult?.serverSignature || "";
+
+        setEvaluatedPipelineSignature(localSignature);
+        setPreRunServerSignature(serverSignature);
+        setIsPreRunEvaluationComplete(Boolean(localSignature && serverSignature));
     }
 
     const handleRoutingUpdate = (updatedNodes) => {
@@ -720,7 +726,8 @@ function Inference() {
             nodes: nodes,
             edges: edges,
             task: activeTask,
-            model_metadata: modelMetadata
+            model_metadata: modelMetadata,
+            pre_run_signature: preRunServerSignature,
         };
         console.log("Execution payload:", payload);
 

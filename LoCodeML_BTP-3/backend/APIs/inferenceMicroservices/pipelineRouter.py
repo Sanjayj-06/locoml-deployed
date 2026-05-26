@@ -24,6 +24,7 @@ env_path = os.getenv("PROJECT_PATH")
 MASTER_SERVER_GETFILE_URL = os.getenv("MASTER_SERVER_GETFILE_URL") or "http://master_server:5001/getFile"
 INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL = os.getenv("INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS_URL") or "http://pipeline_router:5005/retrievePipelineDetails"
 RUN_INFERENCE_PIPELINE_URL = os.getenv("RUN_INFERENCE_PIPELINE_URL") or "http://master_server:5001/nodeInfo"
+PRE_RUN_INFERENCE_URL = os.getenv("PRE_RUN_INFERENCE_URL") or "http://master_server:5001/preRunNodeInference"
 
 sys.path.append(env_path)
 
@@ -126,8 +127,28 @@ def csv_input(pipeline_id):
     # process this data for pipeline execution.
     processed_data = process_data_for_pipeline_execution(pipeline_details.json(), files, data)
 
+    # Collect pre-run inference before execution; nodeInfo enforces this signature.
+    pre_run_response = requests.post(PRE_RUN_INFERENCE_URL, json={
+        'nodes': processed_data['nodes'],
+        'edges': processed_data['edges'],
+    })
+    if pre_run_response.status_code != 200:
+        try:
+            payload = pre_run_response.json()
+            message = payload.get("message") or payload.get("error") or "Failed to collect pre-run inference"
+        except Exception:
+            message = pre_run_response.text or "Failed to collect pre-run inference"
+        return jsonify({"error": message}), pre_run_response.status_code
+
+    pre_run_payload = pre_run_response.json() if pre_run_response.content else {}
+    pre_run_signature = pre_run_payload.get("pipeline_signature")
+
     # tell the master server to run this pipeline.
-    output_data = requests.post(RUN_INFERENCE_PIPELINE_URL, json={'nodes': processed_data['nodes'], 'edges': processed_data['edges']})
+    output_data = requests.post(RUN_INFERENCE_PIPELINE_URL, json={
+        'nodes': processed_data['nodes'],
+        'edges': processed_data['edges'],
+        'pre_run_signature': pre_run_signature,
+    })
     if output_data.status_code != 200:
         try:
             payload = output_data.json()

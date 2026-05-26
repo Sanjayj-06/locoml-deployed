@@ -6,6 +6,9 @@ import nanoid
 import os
 import sys
 import psutil
+import json
+import hashlib
+import datetime
 
 # Add root path to sys.path to ensure we can import resolver
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +40,21 @@ intermediate_output = None
 hasSentIntermediate = True
 
 hasDatasetDetails = False
+
+PRE_RUN_TTL_SECONDS = 900
+PRE_RUN_SIGNATURE_CACHE = {}
+
+NODE_ESTIMATION_BASELINES = {
+    "inputdata": {"latency": 52.0, "cpu": 18.0, "gpu": 4.0, "memory": 24.0},
+    "preprocessing": {"latency": 120.0, "cpu": 42.0, "gpu": 14.0, "memory": 31.0},
+    "adapter": {"latency": 95.0, "cpu": 34.0, "gpu": 11.0, "memory": 29.0},
+    "classification": {"latency": 150.0, "cpu": 56.0, "gpu": 38.0, "memory": 36.0},
+    "regression": {"latency": 136.0, "cpu": 50.0, "gpu": 29.0, "memory": 35.0},
+    "sentiment": {"latency": 162.0, "cpu": 58.0, "gpu": 42.0, "memory": 38.0},
+    "huggingface": {"latency": 182.0, "cpu": 64.0, "gpu": 51.0, "memory": 43.0},
+    "imageclassification": {"latency": 174.0, "cpu": 62.0, "gpu": 67.0, "memory": 47.0},
+    "default": {"latency": 118.0, "cpu": 40.0, "gpu": 20.0, "memory": 33.0},
+}
 
 
 def _error_response(message, status_code=422):
@@ -103,6 +121,292 @@ def create_query_string(url, args):
     return f"{url}?{query_string}"
 
 
+def _clamp(value, minimum, maximum):
+    return max(minimum, min(maximum, value))
+
+
+def _normalize_node_type(node):
+    return str(node.get("type") or node.get("data", {}).get("label") or "default").lower()
+
+
+def _canonicalize_graph(nodes, edges):
+    canonical_nodes = []
+    for node in nodes:
+        data = node.get("data", {})
+        entity = data.get("entity")
+        if isinstance(entity, dict):
+            entity = {
+                "model_id": entity.get("model_id") or entity.get("id") or entity.get("_id"),
+                "dataset_id": entity.get("dataset_id"),
+                "dataset_type": entity.get("dataset_type"),
+                "name": entity.get("name") or entity.get("filename"),
+            }
+
+        canonical_nodes.append({
+            "id": node.get("id"),
+            "type": node.get("type"),
+            "entity": entity,
+            "model_id": node.get("model_id") or data.get("model_id"),
+            "preprocessingType": data.get("preprocessingType"),
+            "task_name": data.get("task_name"),
+        })
+
+    canonical_edges = [
+        {
+            "source": edge.get("source"),
+            "target": edge.get("target"),
+        }
+        for edge in edges
+    ]
+
+    canonical_nodes.sort(key=lambda item: str(item.get("id")))
+    canonical_edges.sort(key=lambda item: f"{item.get('source')}->{item.get('target')}")
+    return {"nodes": canonical_nodes, "edges": canonical_edges}
+
+
+def _build_pipeline_signature(nodes, edges):
+    canonical = _canonicalize_graph(nodes, edges)
+    encoded = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _cleanup_pre_run_cache(now):
+    expired = []
+    for signature, created_at in PRE_RUN_SIGNATURE_CACHE.items():
+        if (now - created_at).total_seconds() > PRE_RUN_TTL_SECONDS:
+            expired.append(signature)
+    for signature in expired:
+        PRE_RUN_SIGNATURE_CACHE.pop(signature, None)
+
+
+def _register_pre_run_signature(signature):
+    now = datetime.datetime.utcnow()
+    _cleanup_pre_run_cache(now)
+    PRE_RUN_SIGNATURE_CACHE[signature] = now
+
+
+def _validate_pre_run_signature(signature, nodes, edges):
+    if not signature:
+        return False, "Pre-run node inference is required before pipeline execution.", None
+
+    expected_signature = _build_pipeline_signature(nodes, edges)
+    if signature != expected_signature:
+        return False, "Pipeline changed after pre-run inference. Re-run evaluation before executing.", expected_signature
+
+    now = datetime.datetime.utcnow()
+    _cleanup_pre_run_cache(now)
+    generated_at = PRE_RUN_SIGNATURE_CACHE.get(signature)
+    if not generated_at:
+        return False, "No fresh pre-run inference found for this pipeline. Evaluate again before run.", expected_signature
+
+    return True, "ok", expected_signature
+
+
+def _resolve_dataset_bytes(nodes):
+    for node in nodes:
+        node_type = _normalize_node_type(node)
+        if node_type != "inputdata":
+            continue
+
+        entity = node.get("data", {}).get("entity")
+        if isinstance(entity, dict):
+            file_size = entity.get("filesize") or entity.get("file", {}).get("filesize")
+            if file_size is not None:
+                try:
+                    return max(0.0, float(file_size))
+                except (TypeError, ValueError):
+                    pass
+
+            manual_inputs = entity.get("manual_inputs")
+            if isinstance(manual_inputs, dict) and manual_inputs:
+                # Estimate a few bytes per scalar input for manual mode.
+                return float(len(manual_inputs) * 64)
+
+    return 1_000_000.0
+
+
+def _infer_model_complexity(node):
+    data = node.get("data", {})
+    entity = data.get("entity") if isinstance(data.get("entity"), dict) else {}
+    model_text = " ".join([
+        str(node.get("model_name") or ""),
+        str(node.get("estimator") or ""),
+        str(data.get("model_name") or ""),
+        str(entity.get("model_name") or ""),
+        str(entity.get("estimator") or ""),
+        str(entity.get("estimator_type") or ""),
+    ]).lower()
+
+    if any(token in model_text for token in ["transformer", "bert", "llama", "gpt", "resnet", "vit"]):
+        return 0.85
+    if any(token in model_text for token in ["xgboost", "randomforest", "random forest", "lightgbm", "catboost", "cnn"]):
+        return 0.62
+    if any(token in model_text for token in ["svm", "ridge", "logistic", "naive", "knn", "linear"]):
+        return 0.35
+    return 0.45
+
+
+def _estimate_node_metrics(node, position_index, total_nodes, dataset_mb, upstream_latency):
+    node_type = _normalize_node_type(node)
+    baseline = NODE_ESTIMATION_BASELINES.get(node_type, NODE_ESTIMATION_BASELINES["default"])
+
+    complexity = _infer_model_complexity(node) if node_type in {
+        "classification", "regression", "sentiment", "huggingface", "imageclassification"
+    } else 0.15
+    depth_factor = (position_index / max(1, total_nodes - 1))
+    size_factor = _clamp(dataset_mb / 24.0, 0.03, 1.35)
+    carry_over = _clamp(upstream_latency / 400.0, 0.0, 0.22)
+
+    latency_ms = baseline["latency"] * (1.0 + 0.37 * size_factor + 0.22 * complexity + 0.11 * depth_factor + carry_over)
+    cpu_usage = baseline["cpu"] + 16.0 * size_factor + 12.0 * complexity + 8.0 * depth_factor
+    gpu_usage = baseline["gpu"] + 21.0 * complexity + 12.0 * size_factor + 6.0 * depth_factor
+    memory_usage = baseline["memory"] + 13.0 * size_factor + 9.0 * complexity + 5.0 * depth_factor
+
+    queue_pressure = _clamp((latency_ms - 130.0) / 170.0 + depth_factor * 0.35 + complexity * 0.2, 0.0, 1.0)
+    throughput_rps = max(0.5, 1000.0 / max(25.0, latency_ms * (1.0 + 0.25 * queue_pressure)))
+
+    failure_probability = _clamp(
+        0.32 * (latency_ms / 320.0)
+        + 0.22 * (cpu_usage / 100.0)
+        + 0.2 * (gpu_usage / 100.0)
+        + 0.18 * (memory_usage / 100.0)
+        + 0.08 * queue_pressure,
+        0.0,
+        1.0,
+    )
+
+    if failure_probability >= 0.6:
+        risk = "High"
+    elif failure_probability >= 0.3:
+        risk = "Moderate"
+    else:
+        risk = "Low"
+
+    score = round(_clamp(100.0 - (failure_probability * 100.0), 0.0, 100.0), 2)
+
+    return {
+        "cpuUsage": round(_clamp(cpu_usage, 1.0, 100.0), 2),
+        "gpuUsage": round(_clamp(gpu_usage, 0.0, 100.0), 2),
+        "memoryUsage": round(_clamp(memory_usage, 1.0, 100.0), 2),
+        "latency": round(max(5.0, latency_ms), 2),
+        "throughput": round(throughput_rps, 2),
+        "score": score,
+        "failureProbability": round(failure_probability, 4),
+        "predictedRuntimeRisk": risk,
+        "riskDecision": {
+            "scoreFormula": "score = 100 - (failureProbability * 100)",
+            "riskThresholds": {
+                "high": "failureProbability >= 0.60 or score < 40",
+                "moderate": "failureProbability >= 0.30 or score < 70",
+                "low": "otherwise",
+            },
+        },
+        "queueSize": int(round(_clamp(queue_pressure * 8.0, 0.0, 12.0))),
+        "retryCount": int(round(_clamp(failure_probability * 5.0, 0.0, 8.0))),
+        "calculation": {
+            "baseline": baseline,
+            "datasetMB": round(dataset_mb, 3),
+            "sizeFactor": round(size_factor, 3),
+            "complexity": round(complexity, 3),
+            "depthFactor": round(depth_factor, 3),
+            "carryOver": round(carry_over, 3),
+            "queuePressure": round(queue_pressure, 3),
+        }
+    }
+
+
+def _build_linear_node_order(nodes, edges):
+    node_by_id = {node.get("id"): node for node in nodes if node.get("id")}
+    incoming = {node_id: 0 for node_id in node_by_id}
+    outgoing = {node_id: [] for node_id in node_by_id}
+
+    for edge in edges:
+        source = edge.get("source")
+        target = edge.get("target")
+        if source in outgoing and target in incoming:
+            outgoing[source].append(target)
+            incoming[target] += 1
+
+    start_candidates = [node_id for node_id, count in incoming.items() if count == 0]
+    if not start_candidates and nodes:
+        start_candidates = [nodes[0].get("id")]
+
+    ordered_ids = []
+    visited = set()
+    for start_id in start_candidates:
+        current_id = start_id
+        while current_id and current_id not in visited and current_id in node_by_id:
+            ordered_ids.append(current_id)
+            visited.add(current_id)
+            next_ids = outgoing.get(current_id, [])
+            current_id = next_ids[0] if next_ids else None
+
+    for node in nodes:
+        node_id = node.get("id")
+        if node_id and node_id not in visited:
+            ordered_ids.append(node_id)
+
+    return [node_by_id[node_id] for node_id in ordered_ids if node_id in node_by_id]
+
+
+def _estimate_pipeline(nodes, edges):
+    ordered_nodes = _build_linear_node_order(nodes, edges)
+    dataset_bytes = _resolve_dataset_bytes(nodes)
+    dataset_mb = max(0.001, dataset_bytes / (1024.0 * 1024.0))
+
+    estimates = []
+    upstream_latency = 0.0
+    for index, node in enumerate(ordered_nodes):
+        metrics = _estimate_node_metrics(node, index, len(ordered_nodes), dataset_mb, upstream_latency)
+        upstream_latency = metrics["latency"]
+        estimates.append({
+            "node_id": node.get("id"),
+            "node_type": node.get("type"),
+            "node_title": node.get("data", {}).get("name") or node.get("data", {}).get("label") or node.get("type"),
+            "metrics": metrics,
+        })
+
+    return estimates
+
+
+@app.route("/preRunNodeInference", methods=["POST"])
+def pre_run_node_inference():
+    payload = request.get_json(silent=True) or {}
+    nodes = payload.get("nodes", [])
+    edges = payload.get("edges", [])
+
+    if not nodes:
+        return jsonify({"status": "error", "message": "No nodes found"}), 400
+    if not edges:
+        return jsonify({"status": "error", "message": "No edges found"}), 400
+
+    signature = _build_pipeline_signature(nodes, edges)
+    estimates = _estimate_pipeline(nodes, edges)
+    _register_pre_run_signature(signature)
+
+    summary = {
+        "nodeCount": len(nodes),
+        "highRiskNodes": len([item for item in estimates if item["metrics"]["predictedRuntimeRisk"] == "High"]),
+        "moderateRiskNodes": len([item for item in estimates if item["metrics"]["predictedRuntimeRisk"] == "Moderate"]),
+        "avgLatencyMs": round(sum(item["metrics"]["latency"] for item in estimates) / max(1, len(estimates)), 2),
+        "avgThroughputRps": round(sum(item["metrics"]["throughput"] for item in estimates) / max(1, len(estimates)), 2),
+    }
+
+    return jsonify({
+        "status": "success",
+        "pipeline_signature": signature,
+        "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "estimates": estimates,
+        "summary": summary,
+        "calculation_notes": [
+            "No pipeline node is executed for this estimate; values are static predictions based on graph metadata.",
+            "Latency/CPU/GPU/Memory are derived from node-type baselines, dataset size factor, model complexity hints, and graph depth.",
+            "Throughput is derived from predicted latency and queue pressure: throughput ~= 1000 / (latency * pressure_adjustment).",
+            "Risk is derived from weighted latency, CPU, GPU, memory, and queue pressure and then mapped to Low/Moderate/High.",
+        ],
+    }), 200
+
+
 @app.route("/nodeInfo", methods=["POST"])
 def node_info():
     global hasSentIntermediate, datasetDetails, dataset_type
@@ -116,6 +420,16 @@ def node_info():
             return jsonify({"status": "error", "message": "No nodes found"}), 400
         if not edgeDetails:
             return jsonify({"status": "error", "message": "No edges found"}), 400
+
+        pre_run_signature = payload.get("pre_run_signature")
+        is_valid_pre_run, pre_run_message, expected_signature = _validate_pre_run_signature(pre_run_signature, nodeDetails, edgeDetails)
+        if not is_valid_pre_run:
+            return jsonify({
+                "status": "error",
+                "message": pre_run_message,
+                "expected_signature": expected_signature,
+            }), 428
+
         print(f"[DEBUG] Received nodes and edges. Total nodes: {len(nodeDetails)}, Total edges: {len(edgeDetails)}", file=sys.stdout)
         
         # Log edge traversals planned

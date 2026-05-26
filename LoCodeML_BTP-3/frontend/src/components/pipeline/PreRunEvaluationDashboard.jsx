@@ -31,6 +31,8 @@ const MODEL_ENDPOINTS = {
   machinetranslation: 'http://localhost:5001/getTrainedModels/machinetranslation',
 };
 
+const PRE_RUN_INFERENCE_ENDPOINT = 'http://localhost:5001/preRunNodeInference';
+
 const MODEL_NODE_TYPES = new Set([
   'classification',
   'regression',
@@ -213,6 +215,97 @@ const formatMetricValue = (value) => {
   return String(value);
 };
 
+const getRuntimeRows = (row) => {
+  const metrics = row?.runtimeMetrics;
+  if (!metrics) {
+    return [];
+  }
+
+  const inputOnlyRows = [
+    ['Latency', `${formatMetricValue(metrics.latency)} ms`],
+    ['CPU', `${formatMetricValue(metrics.cpuUsage)}%`],
+    ['Memory', `${formatMetricValue(metrics.memoryUsage)}%`],
+  ];
+
+  const fullRows = [
+    ...inputOnlyRows,
+    ['GPU', `${formatMetricValue(metrics.gpuUsage)}%`],
+    ['Throughput', formatMetricValue(metrics.throughput)],
+    ['Score', `${formatMetricValue(metrics.score)} / 100`],
+    ['Risk', metrics.predictedRuntimeRisk || 'Unknown'],
+  ];
+
+  return row?.nodeType === 'inputData' ? inputOnlyRows : fullRows;
+};
+
+const hashString = (value = '') => {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return Math.abs(hash);
+};
+
+const normalizeNodeType = (node) => String(node?.type || node?.data?.label || 'default').toLowerCase();
+
+const localEstimateNodeMetrics = (node, index, totalNodes) => {
+  const nodeType = normalizeNodeType(node);
+  const seed = hashString(`${node?.id || 'node'}:${nodeType}`);
+  const pulse = Math.sin((index / 3) + (seed % 11));
+  const jitter = Math.cos((index / 5) + (seed % 7));
+  const hasEntity = !!(node?.data?.entity || node?.data?.model_name);
+
+  if (!hasEntity) {
+    return {
+      latency: null,
+      cpuUsage: null,
+      gpuUsage: null,
+      memoryUsage: null,
+      throughput: null,
+      predictedRuntimeRisk: 'Low',
+      failureProbability: 0,
+    };
+  }
+
+  const profiles = {
+    inputdata: { latency: 92, cpu: 24, gpu: 4, memory: 26, throughput: 88 },
+    preprocessing: { latency: 138, cpu: 46, gpu: 18, memory: 34, throughput: 74 },
+    adapter: { latency: 124, cpu: 39, gpu: 12, memory: 31, throughput: 70 },
+    classification: { latency: 156, cpu: 58, gpu: 42, memory: 38, throughput: 62 },
+    regression: { latency: 148, cpu: 54, gpu: 36, memory: 37, throughput: 64 },
+    sentiment: { latency: 162, cpu: 56, gpu: 40, memory: 39, throughput: 60 },
+    huggingface: { latency: 184, cpu: 61, gpu: 52, memory: 43, throughput: 56 },
+    imageclassification: { latency: 174, cpu: 63, gpu: 68, memory: 46, throughput: 54 },
+    default: { latency: 128, cpu: 42, gpu: 20, memory: 33, throughput: 68 },
+  };
+
+  const profile = profiles[nodeType] || profiles.default;
+  const complexity = ['huggingface', 'imageclassification'].includes(nodeType) ? 0.8 : ['classification', 'regression', 'sentiment'].includes(nodeType) ? 0.45 : 0.15;
+  const depthFactor = index / Math.max(1, totalNodes - 1);
+
+  const latency = Math.max(18, Math.round(profile.latency + (pulse * 18) + (complexity * 22) + (depthFactor * 14)));
+  const cpuUsage = Math.min(100, Math.max(0, Math.round(profile.cpu + (pulse * 8) + (jitter * 5) + (complexity * 12) + (depthFactor * 8))));
+  const memoryUsage = Math.min(100, Math.max(0, Math.round(profile.memory + (pulse * 6) + (jitter * 4) + (complexity * 10) + (depthFactor * 7))));
+  const gpuUsage = Math.min(100, Math.max(0, Math.round(profile.gpu + (pulse * 10) + (jitter * 7) + (complexity * 16) + (depthFactor * 10))));
+  const throughput = Math.max(1, Math.round(profile.throughput - Math.max(0, latency - 130) / 4 + (pulse * 5)));
+  const failureProbability = Math.min(1, Math.max(0, ((latency / 420) * 0.3) + ((cpuUsage / 100) * 0.15) + ((gpuUsage / 100) * 0.2) + ((memoryUsage / 100) * 0.15)));
+  const score = Math.max(0, Math.min(100, Math.round(100 - (failureProbability * 100))));
+
+  return {
+    latency,
+    cpuUsage,
+    gpuUsage,
+    memoryUsage,
+    throughput,
+    score,
+    failureProbability,
+    predictedRuntimeRisk: failureProbability >= 0.62 ? 'High' : failureProbability >= 0.28 ? 'Moderate' : 'Low',
+  };
+};
+
 const getEstimatorType = (model) => {
   if (!model) {
     return '';
@@ -233,6 +326,7 @@ function PreRunEvaluationDashboard({
   const [catalogByObjective, setCatalogByObjective] = useState({});
   const [evaluationRows, setEvaluationRows] = useState([]);
   const [routingApplied, setRoutingApplied] = useState(false);
+  const [preRunMeta, setPreRunMeta] = useState(null);
   const onEvaluationCompleteRef = useRef(onEvaluationComplete);
   const lastEvaluationSignatureRef = useRef('');
 
@@ -250,6 +344,41 @@ function PreRunEvaluationDashboard({
     setLoading(true);
 
     try {
+      let preRunData = {};
+      let estimateByNodeId = {};
+
+      try {
+        const preRunResponse = await axios.post(PRE_RUN_INFERENCE_ENDPOINT, {
+          nodes,
+          edges,
+        });
+        preRunData = preRunResponse?.data || {};
+        const estimateRows = Array.isArray(preRunData.estimates) ? preRunData.estimates : [];
+        estimateByNodeId = estimateRows.reduce((accumulator, entry) => {
+          if (entry?.node_id) {
+            accumulator[entry.node_id] = entry.metrics || null;
+          }
+          return accumulator;
+        }, {});
+      } catch (preRunError) {
+        const localRows = nodes.map((node, index) => ({
+          node_id: node.id,
+          metrics: localEstimateNodeMetrics(node, index, nodes.length),
+        }));
+        estimateByNodeId = localRows.reduce((accumulator, entry) => {
+          accumulator[entry.node_id] = entry.metrics;
+          return accumulator;
+        }, {});
+        preRunData = {
+          pipeline_signature: '',
+          generated_at: null,
+          summary: {
+            fallbackMode: true,
+            message: 'Using local pre-run estimation because the backend pre-run endpoint is unavailable.',
+          },
+        };
+      }
+
       const fetchCatalog = async (objective) => {
         const endpoint = MODEL_ENDPOINTS[objective];
         if (!endpoint) {
@@ -285,7 +414,8 @@ function PreRunEvaluationDashboard({
         }
         seenNodeIds.add(node.id);
 
-        const runtimeMetrics = simulateRuntimeMetrics(node, { tick: index, pipelineRunning: false, pipelinePaused: false });
+        const estimatedMetrics = estimateByNodeId[node.id] || null;
+        const runtimeMetrics = estimatedMetrics || simulateRuntimeMetrics(node, { tick: index, pipelineRunning: false, pipelinePaused: false });
         const healthState = evaluateHealth(runtimeMetrics);
         const objective = getNodeObjective(node);
         const modelCatalog = nextCatalog[objective] || [];
@@ -320,17 +450,24 @@ function PreRunEvaluationDashboard({
 
               const selectedModel = shouldRoute && alternativeModel ? alternativeModel : bestModel;
               const selectedScore = shouldRoute && alternativeScore ? alternativeScore : bestScore;
+              const selectedAlgorithm = getEstimatorType(selectedModel);
+              const algorithmChanged = !!currentAlgorithm && !!selectedAlgorithm && currentAlgorithm !== selectedAlgorithm;
 
             recommendation = {
                 shouldRoute: (lowPerformanceSignal || hasNoScore) && !!selectedModel,
               currentModel: getEntityLabel(currentModel),
+              currentAlgorithm: currentAlgorithm,
               currentScore,
                 bestModel: selectedModel,
                 bestScore: selectedScore,
+                selectedAlgorithm,
+                algorithmChanged,
                 reason: lowPerformanceSignal
-                  ? `Model routing auto-triggered: runtime degraded (${healthState.label}). Switching to ${getEntityLabel(selectedModel)} (${getEstimatorType(selectedModel)}).`
+                  ? `Model routing auto-triggered: runtime degraded (${healthState.label}). Switching from ${currentAlgorithm || 'unknown'} to ${selectedAlgorithm || 'unknown'}.`
                   : hasNoScore
-                  ? `Routing prefers ${getEntityLabel(selectedModel)} because the current model is not configured or has no score.`
+                  ? (algorithmChanged
+                    ? `Routing prefers ${getEntityLabel(selectedModel)} because the current model is not configured or has no score.`
+                    : `The best-scoring option uses the same algorithm as the current model, so there is no alternate algorithm to route to.`)
                   : `Current model ${getEntityLabel(currentModel)} remains the best fit for this pipeline step.`,
             };
           }
@@ -361,11 +498,21 @@ function PreRunEvaluationDashboard({
 
       setCatalogByObjective(nextCatalog);
       setEvaluationRows(rows);
+      setPreRunMeta({
+        pipelineSignature: preRunData.pipeline_signature || '',
+        generatedAt: preRunData.generated_at || null,
+        summary: preRunData.summary || null,
+      });
       if (lastEvaluationSignatureRef.current !== evaluationSignature) {
         lastEvaluationSignatureRef.current = evaluationSignature;
-        onEvaluationCompleteRef.current?.(evaluationSignature);
+        onEvaluationCompleteRef.current?.({
+          localSignature: evaluationSignature,
+          serverSignature: preRunData.pipeline_signature || evaluationSignature,
+          generatedAt: preRunData.generated_at || null,
+        });
       }
     } catch (error) {
+      setPreRunMeta(null);
       setEvaluationRows([
         {
           nodeId: 'error',
@@ -396,6 +543,7 @@ function PreRunEvaluationDashboard({
       setCatalogByObjective({});
       setEvaluationRows([]);
       setRoutingApplied(false);
+      setPreRunMeta(null);
       return undefined;
     }
 
@@ -409,14 +557,17 @@ function PreRunEvaluationDashboard({
 
     const routeCount = evaluationRows.filter((row) => row.recommendation?.shouldRoute).length;
     const hasDegradation = evaluationRows.some((row) => row.healthState?.key === 'degraded' || row.healthState?.key === 'critical');
+    const hasHighRisk = evaluationRows.some((row) => row.runtimeMetrics?.predictedRuntimeRisk === 'High');
 
-    if (routeCount > 0 && hasDegradation) {
+    if ((routeCount > 0 && hasDegradation) || hasHighRisk) {
       // Auto-apply routing for degraded nodes
       const updatedNodes = nodes.map((node) => {
         const row = evaluationRows.find((evaluationRow) => evaluationRow.nodeId === node.id);
         const recommendedModel = row?.recommendation?.bestModel;
+        // If the node is High risk, auto-apply regardless of shouldRoute
+        const forceRoute = row?.runtimeMetrics?.predictedRuntimeRisk === 'High';
 
-        if (!recommendedModel || !row?.recommendation?.shouldRoute) {
+        if (!recommendedModel || (!row?.recommendation?.shouldRoute && !forceRoute)) {
           return node;
         }
 
@@ -456,6 +607,35 @@ function PreRunEvaluationDashboard({
           entity: recommendedModel,
           model_id: recommendedModel.model_id || node.data?.model_id || null,
           model_name: recommendedModel.model_name || recommendedModel.estimator_type || node.data?.model_name || null,
+          estimator_type: recommendedModel.estimator_type || node.data?.estimator_type || null,
+          estimator: recommendedModel.estimator_type || recommendedModel.estimator || node.data?.estimator || null,
+          algorithm: recommendedModel.estimator_type || recommendedModel.algorithm || node.data?.algorithm || null,
+        },
+      };
+    });
+
+    setRoutingApplied(true);
+    onApplyRouting(updatedNodes);
+  };
+
+  const routeSingleNode = (nodeId) => {
+    if (!onApplyRouting) return;
+    const row = evaluationRows.find((r) => r.nodeId === nodeId);
+    const recommendedModel = row?.recommendation?.bestModel;
+    if (!recommendedModel) return;
+
+    const updatedNodes = nodes.map((node) => {
+      if (node.id !== nodeId) return node;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          entity: recommendedModel,
+          model_id: recommendedModel.model_id || node.data?.model_id || null,
+          model_name: recommendedModel.model_name || recommendedModel.estimator_type || node.data?.model_name || null,
+          estimator_type: recommendedModel.estimator_type || node.data?.estimator_type || null,
+          estimator: recommendedModel.estimator_type || recommendedModel.estimator || node.data?.estimator || null,
+          algorithm: recommendedModel.estimator_type || recommendedModel.algorithm || node.data?.algorithm || null,
         },
       };
     });
@@ -517,6 +697,12 @@ function PreRunEvaluationDashboard({
               </Box>
             </Box>
 
+            {preRunMeta?.generatedAt ? (
+              <Typography variant="caption" color="text.secondary">
+                Pre-run inference generated at: {preRunMeta.generatedAt}
+              </Typography>
+            ) : null}
+
             <Box>
               <Typography variant="h6" sx={{ mb: 1 }}>
                 Collected Inputs and Runtime Signal
@@ -559,12 +745,11 @@ function PreRunEvaluationDashboard({
                         />
                         {row.runtimeMetrics ? (
                           <Box sx={{ display: 'grid', gap: 0.25 }}>
-                            <Typography variant="body2">Latency: {formatMetricValue(row.runtimeMetrics.latency)} ms</Typography>
-                            <Typography variant="body2">CPU: {formatMetricValue(row.runtimeMetrics.cpuUsage)}%</Typography>
-                            <Typography variant="body2">GPU: {formatMetricValue(row.runtimeMetrics.gpuUsage)}%</Typography>
-                            <Typography variant="body2">Memory: {formatMetricValue(row.runtimeMetrics.memoryUsage)}%</Typography>
-                            <Typography variant="body2">Throughput: {formatMetricValue(row.runtimeMetrics.throughput)}</Typography>
-                            <Typography variant="body2">Risk: {row.runtimeMetrics.predictedRuntimeRisk}</Typography>
+                            {getRuntimeRows(row).map(([label, value]) => (
+                              <Typography key={`${row.nodeId}-${label}`} variant="body2">
+                                {label}: {value}
+                              </Typography>
+                            ))}
                           </Box>
                         ) : (
                           <Typography variant="body2">No runtime metrics available.</Typography>
@@ -577,6 +762,9 @@ function PreRunEvaluationDashboard({
                         {row.recommendation ? (
                           <Box sx={{ display: 'grid', gap: 0.75 }}>
                             <Typography variant="body2">Current: {row.recommendation.currentModel}</Typography>
+                            {row.recommendation.currentAlgorithm ? (
+                              <Typography variant="caption" color="text.secondary">Algorithm: {row.recommendation.currentAlgorithm} {row.recommendation.selectedAlgorithm ? `→ ${row.recommendation.selectedAlgorithm}` : ''}</Typography>
+                            ) : null}
                             <Typography variant="body2">
                               Current metric: {row.recommendation.currentScore ? `${row.recommendation.currentScore.metricName} = ${formatMetricValue(row.recommendation.currentScore.metricValue)}` : 'n/a'}
                             </Typography>
@@ -586,9 +774,19 @@ function PreRunEvaluationDashboard({
                             <Typography variant="body2">
                               Recommended metric: {row.recommendation.bestScore ? `${row.recommendation.bestScore.metricName} = ${formatMetricValue(row.recommendation.bestScore.metricValue)}` : 'n/a'}
                             </Typography>
+                            {row.runtimeMetrics?.predictedRuntimeRisk === 'Moderate' && row.recommendation.algorithmChanged ? (
+                              <Button size="small" variant="contained" onClick={() => routeSingleNode(row.nodeId)}>
+                                Route
+                              </Button>
+                            ) : null}
+                            {row.runtimeMetrics?.predictedRuntimeRisk === 'Moderate' && !row.recommendation.algorithmChanged ? (
+                              <Typography variant="caption" color="text.secondary">
+                                No alternate algorithm is available for this model set.
+                              </Typography>
+                            ) : null}
                             <Chip
                               size="small"
-                              label={row.recommendation.shouldRoute ? 'Route model' : 'Keep model'}
+                              label={row.recommendation.shouldRoute ? (row.recommendation.algorithmChanged ? 'Route model' : 'Route keeps same algorithm') : 'Keep model'}
                               color={row.recommendation.shouldRoute ? 'warning' : 'success'}
                               variant="outlined"
                             />
@@ -616,6 +814,9 @@ function PreRunEvaluationDashboard({
                 {routeCount === 0
                   ? 'No routing changes are required. The current model choices are stable enough to proceed.'
                   : `The dashboard found ${routeCount} model node(s) that should be rerouted before run. Apply the suggested route and recheck the pipeline once more.`}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Score = 100 - (failure probability × 100). Risk is High when failure probability is at least 0.60 or score is below 40, Moderate when failure probability is at least 0.30 or score is below 70, otherwise Low.
               </Typography>
             </Box>
           </Box>
