@@ -32,33 +32,6 @@ def getDatasetList():
     import datetime
     collection = db['Datasets']
 
-    # Self-healing: sync files on disk in the Datasets directory with MongoDB
-    project_path = os.getenv('PROJECT_PATH', '')
-    datasets_dir = os.path.join(project_path, 'Datasets')
-    if os.path.exists(datasets_dir):
-        for f in os.listdir(datasets_dir):
-            if f.startswith('.'):
-                continue
-            name, ext = os.path.splitext(f)
-            if ext.lower() in ['.csv', '.zip']:
-                dataset_id = name
-                # Check if it exists in DB
-                existing = collection.find_one({'dataset_id': dataset_id})
-                if not existing:
-                    filepath = os.path.join(datasets_dir, f)
-                    try:
-                        size = str(os.path.getsize(filepath))
-                    except Exception:
-                        size = "0"
-                    
-                    collection.insert_one({
-                        'time': datetime.datetime.now(),
-                        'dataset_id': dataset_id,
-                        'dataset_size': size,
-                        'dataset_name': f"Dataset_{dataset_id}{ext}",
-                        'dataset_path': filepath,
-                        'dataset_type': 'image' if ext.lower() == '.zip' else 'text'
-                    })
 
     dataset_list = list(collection.find({}))
     filtered_list = []
