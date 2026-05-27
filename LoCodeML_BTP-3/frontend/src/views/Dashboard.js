@@ -43,40 +43,58 @@ function Dashboard() {
     useEffect(() => {
 
         const getModelDetails = async () => {
-            const response = await axios.get('/getTrainedModels');
-            // var parsedData = JSON.parse(response.data.trained_models);
-            // console.log(response.data.trained_models)
-            var temp = [];
-            for (var i = 0; i < response.data.trained_models.length; i++) {
-                try {
-                    var parsed_model = JSON.parse(response.data.trained_models[i].replace(/Infinity/g, "1e1000"));
-                    temp.push(parsed_model);
-                } catch (error) {
-                    console.log(error);
-                    console.error(`Invalid JSON in response.data.trained_models[${i}]:`, response.data.trained_models[i]);
+            try {
+                const response = await axios.get('/getTrainedModels');
+                if (!response?.data?.trained_models) {
+                    throw new Error("Invalid trained models response format");
                 }
-            }
-            setAllModelDetails(temp);
-            console.log(response.data.trained_models.length);
+                var temp = [];
+                for (var i = 0; i < response.data.trained_models.length; i++) {
+                    try {
+                        var parsed_model = JSON.parse(response.data.trained_models[i].replace(/Infinity/g, "1e1000"));
+                        temp.push(parsed_model);
+                    } catch (error) {
+                        console.error(`Invalid JSON in response.data.trained_models[${i}]:`, response.data.trained_models[i]);
+                    }
+                }
+                setAllModelDetails(temp);
+                console.log(response.data.trained_models.length);
 
-            systemStats["total_models"] = response.data.trained_models.length;
-            systemStats["most_popular_model"] = getMostPopularModel(temp);
-            var plotdata1 = BarPlotData(temp);
-            var plotdata2 = AreaPlotData(temp);
-            var plotdata3 = PiePlotData(temp);
-            setBarPlotData(plotdata1);
-            setAreaPlotData(plotdata2);
-            setPiePlotData(plotdata3);
+                setSystemStats(prev => ({
+                    ...prev,
+                    total_models: temp.length,
+                    most_popular_model: getMostPopularModel(temp)
+                }));
+                
+                var plotdata1 = BarPlotData(temp);
+                var plotdata2 = AreaPlotData(temp);
+                var plotdata3 = PiePlotData(temp);
+                setBarPlotData(plotdata1);
+                setAreaPlotData(plotdata2);
+                setPiePlotData(plotdata3);
+            } catch (error) {
+                console.error("Failed to load trained models details:", error);
+            }
         }
 
         const getDatasetDetails = async () => {
-            const response = await axios.get('/getDatasets');
-            setDatasetDetails(response.data.dataset_list);
-            console.log(response.data.dataset_list.length);
-            systemStats["total_datasets"] = response.data.dataset_list.length;
-            systemStats["total_size_of_datasets"] = getTotalSizeOfDatasets(response.data.dataset_list);
+            try {
+                const response = await axios.get('/getDatasets');
+                if (!response?.data?.dataset_list) {
+                    throw new Error("Invalid dataset list response format");
+                }
+                const datasets = response.data.dataset_list;
+                setDatasetDetails(datasets);
+                console.log(datasets.length);
+                setSystemStats(prev => ({
+                    ...prev,
+                    total_datasets: datasets.length,
+                    total_size_of_datasets: getTotalSizeOfDatasets(datasets)
+                }));
+            } catch (error) {
+                console.error("Failed to load dataset details:", error);
+            }
         }
-
 
         getModelDetails();
         getDatasetDetails();

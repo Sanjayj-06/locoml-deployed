@@ -15,6 +15,34 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const isModelSelected = !!(data?.model_id || data?.entity);
 
+  const parseTrainedModels = (responseData) => {
+    const normalizedResponse = typeof responseData === "string"
+      ? (() => {
+          try {
+            return JSON.parse(responseData);
+          } catch (error) {
+            return {};
+          }
+        })()
+      : responseData;
+
+    const trainedModels = Array.isArray(normalizedResponse?.trained_models) ? normalizedResponse.trained_models : [];
+
+    return trainedModels
+      .map((model) => {
+        if (typeof model === "string") {
+          try {
+            return JSON.parse(model.replace(/Infinity/g, "1e1000"));
+          } catch (error) {
+            return null;
+          }
+        }
+
+        return model;
+      })
+      .filter(Boolean);
+  };
+
   const handleOpenModal = () => {
     setIsModalOpen(true);
   };
@@ -29,7 +57,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         .then((response) => {
           console.log("Received image classification models: ", response.data);
           var imageClassificationModelMap = {};
-          const parsedModels = response.data.trained_models.map(model => JSON.parse(model.replace(/Infinity/g, "1e1000")));
+          const parsedModels = parseTrainedModels(response.data);
           parsedModels.forEach((model) => {
             imageClassificationModelMap[model.model_id] = model;
           });
@@ -107,13 +135,13 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
         {/* Model selection part inside the modal */}
         <div >
           {/* Dropdown for selecting classification models */}
-          <Select
+            <Select
             className="nodrag nopan"
             style={{ width: '200px' }}
             value={data?.model_id || undefined}
             options={Object.keys(imageClassificationModels).map((model_id) => ({
               value: model_id,
-              label: imageClassificationModels[model_id].model_name
+              label: imageClassificationModels[model_id].model_name || imageClassificationModels[model_id].name || model_id
             }))}
             disabled={isLoading}
             onChange={handleChange}

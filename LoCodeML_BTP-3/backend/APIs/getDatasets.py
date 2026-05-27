@@ -27,37 +27,59 @@ def resolve_dataset_path(dataset_id, dataset_type, dataset_info=None):
 
 @getDatasets.route('/getDatasets')
 def getDatasetList():
-    # read all files from Datasets folder
-    # return list of files
-    import datetime
-    collection = db['Datasets']
+    try:
+        import datetime
+        collection = db['Datasets']
 
+        dataset_list = list(collection.find({}))
+        filtered_list = []
 
-    dataset_list = list(collection.find({}))
-    filtered_list = []
+        for dataset in dataset_list:
+            try:
+                dataset_id = dataset.get('dataset_id')
+                dataset_type = dataset.get('dataset_type', 'text')
+                dataset_path, resolved_type = resolve_dataset_path(
+                    dataset_id,
+                    dataset_type,
+                    dataset_info=dataset
+                )
 
-    for dataset in dataset_list:
-        dataset_id = dataset.get('dataset_id')
-        dataset_type = dataset.get('dataset_type', 'text')
-        dataset_path, resolved_type = resolve_dataset_path(
-            dataset_id,
-            dataset_type,
-            dataset_info=dataset
-        )
+                if dataset_path and os.path.exists(dataset_path):
+                    if '_id' in dataset:
+                        dataset['_id'] = str(dataset['_id'])
+                    dataset['dataset_path'] = dataset_path
+                    dataset['dataset_type'] = resolved_type
+                    filtered_list.append(dataset)
+            except Exception as item_err:
+                print(f"[WARNING] Skipping malformed dataset entry: {item_err}")
 
-        if dataset_path and os.path.exists(dataset_path):
-            dataset['_id'] = str(dataset['_id'])
-            dataset['dataset_path'] = dataset_path
-            dataset['dataset_type'] = resolved_type
-            filtered_list.append(dataset)
-
-    return {'dataset_list': filtered_list}
+        return {'dataset_list': filtered_list}
+    except Exception as e:
+        import traceback
+        import sys
+        print(f"[ERROR] Failed to retrieve dataset list: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({
+            'success': False,
+            'dataset_list': [],
+            'error': 'Failed to retrieve datasets registry',
+            'details': str(e)
+        }), 500
 
 @getDatasets.route('/getDatasetInfo/<dataset_id>')
 def getDatasetInfo(dataset_id):
-    collection = db['Datasets']
-    dataset_info = collection.find_one({'dataset_id': dataset_id})
-    return json_util.dumps(dataset_info)
+    try:
+        collection = db['Datasets']
+        dataset_info = collection.find_one({'dataset_id': dataset_id})
+        if not dataset_info:
+            return jsonify({'error': f'Dataset {dataset_id} not found'}), 404
+        return json_util.dumps(dataset_info)
+    except Exception as e:
+        import traceback
+        import sys
+        print(f"[ERROR] Failed to fetch dataset {dataset_id}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({'error': str(e)}), 500
 
 @getDatasets.route('/getDatasets/<dataset_id>/<dataset_type>')
 def getDataset(dataset_id, dataset_type):

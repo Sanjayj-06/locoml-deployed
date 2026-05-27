@@ -63,7 +63,35 @@ class TestResolverAssistantValidation(unittest.TestCase):
             self.assertFalse(res["valid"])
             
             issue_types = [issue["type"] for issue in res["issues"]]
-            self.assertIn("disconnected_graph", issue_types)
+            self.assertIn("disconnected_model_node", issue_types)
+            self.assertIn("isolated_pipeline_component", issue_types)
+
+    def test_isolated_terminal_model_blocks_readiness(self):
+        nodes = [
+            {"id": "inp_1", "type": "inputData", "data": {"label": "Inputs", "entity": "dataset.csv"}},
+            {"id": "prep_1", "type": "preprocessing", "data": {"label": "Preprocessing"}},
+            {"id": "reg_1", "type": "regression", "data": {"label": "Regression", "entity": "linear_reg"}}
+        ]
+        edges = [
+            {"id": "e1", "source": "inp_1", "target": "prep_1"}
+        ]
+
+        with patch('mongoDB.db') as mock_db, patch('os.path.exists', return_value=True):
+            mock_collection = MagicMock()
+            mock_collection.find_one.return_value = {
+                'model_id': 'linear_reg',
+                'model_name': 'linear_reg',
+                'saved_model_path': '/app/Models/linear_reg.pkl'
+            }
+            mock_db.__getitem__.return_value = mock_collection
+
+            res = ValidationEngine.validate_graph(nodes, edges)
+            self.assertFalse(res["valid"])
+
+            issue_types = [issue["type"] for issue in res["issues"]]
+            self.assertIn("disconnected_model_node", issue_types)
+            self.assertIn("unreachable_terminal_node", issue_types)
+            self.assertIn("incomplete_execution_chain", issue_types)
 
     def test_graph_has_cycle(self):
         nodes = [

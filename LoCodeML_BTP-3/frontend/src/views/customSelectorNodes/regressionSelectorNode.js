@@ -11,6 +11,50 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
+const parseTrainedModels = (responseData) => {
+  const normalizedResponse = typeof responseData === "string"
+    ? (() => {
+        try {
+          return JSON.parse(responseData);
+        } catch (error) {
+          return {};
+        }
+      })()
+    : responseData;
+
+  const trainedModels = Array.isArray(normalizedResponse?.trained_models) ? normalizedResponse.trained_models : [];
+
+  return trainedModels
+    .map((model) => {
+      if (typeof model === "string") {
+        try {
+          return JSON.parse(model.replace(/Infinity/g, "1e1000"));
+        } catch (error) {
+          console.warn("Skipping invalid model payload:", error);
+          return null;
+        }
+      }
+
+      return model;
+    })
+    .filter(Boolean);
+};
+
+const isRegressionModel = (model) => {
+  if (!model) return false;
+  const objective = String(
+    model?.objective || model?.training_mode || model?.task_type || model?.model_task || ''
+  ).toLowerCase();
+  const estimatorType = String(
+    model?.estimator_type || model?.estimator || model?.estimatorType || ''
+  ).toLowerCase();
+  const candidates = [objective, estimatorType, JSON.stringify(model || {})].join(' ');
+
+  return candidates.includes('regress') || objective === 'regression' || objective.includes('regression');
+};
+
 export default memo(({ id, data, isConnectable, nodeType }) => {
 
   React.useEffect(() => {
@@ -180,41 +224,51 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
 
   React.useEffect(() => {
     const fetchData = async () => {
-      axios.get("/getTrainedModels/regression")
-        .then((response) => {
-          console.log("Received regression models: ", response.data);
-          var regressionModelMap = {};
-          const parsedModels = response.data.trained_models.map(model => JSON.parse(model.replace(/Infinity/g, "1e1000")));
-          parsedModels.forEach((model) => {
-            console.log(model);
+      try {
+        const [regressionResponse, allModelsResponse] = await Promise.all([
+          axios.get(`${apiBaseUrl}/getTrainedModels/regression`),
+          axios.get(`${apiBaseUrl}/getTrainedModels`),
+        ]);
+
+        const parsedRegressionModels = parseTrainedModels(regressionResponse.data);
+        const parsedAllModels = parseTrainedModels(allModelsResponse.data);
+        const visibleModels = parsedRegressionModels.length > 0
+          ? parsedRegressionModels
+          : parsedAllModels.filter(isRegressionModel);
+        const fallbackModels = visibleModels.length > 0 ? visibleModels : parsedAllModels;
+
+        const regressionModelMap = {};
+        fallbackModels.forEach((model) => {
+          if (model?.model_id) {
             regressionModelMap[model.model_id] = model;
-          });
-          if(data && data.model_id){
-            if(regressionModelMap[data.model_id]){
-              const selectedModel = regressionModelMap[data.model_id];
-              data.entity = selectedModel;
-              if (data.onModelBind) {
-                data.onModelBind(id, selectedModel);
-              }
-              if (data.onModelSelect) {
-                data.onModelSelect(selectedModel);
-              }
-            }
-            else{
-              data.entity = null;
-              console.warn("No model found for the given model_id: ", data.model_id);
-            }
-          } else{
-            data.entity = null;
           }
-          setRegressionModels(regressionModelMap);
-          setIsLoading(false);
-        })
-        .catch((error) => {
-          console.log(error);
-          setRegressionModels({});
-          setIsLoading(false);
         });
+
+        if (data && data.model_id) {
+          if (regressionModelMap[data.model_id]) {
+            const selectedModel = regressionModelMap[data.model_id];
+            data.entity = selectedModel;
+            if (data.onModelBind) {
+              data.onModelBind(id, selectedModel);
+            }
+            if (data.onModelSelect) {
+              data.onModelSelect(selectedModel);
+            }
+          } else {
+            data.entity = null;
+            console.warn("No model found for the given model_id: ", data.model_id);
+          }
+        } else {
+          data.entity = null;
+        }
+
+        setRegressionModels(regressionModelMap);
+      } catch (error) {
+        console.log(error);
+        setRegressionModels({});
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchData();
   }
@@ -299,7 +353,7 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
                 value={data?.model_id || undefined}
                 options={Object.keys(regressionModels).map((model_id) => ({
                   value: model_id,
-                  label: regressionModels[model_id].model_name
+                  label: regressionModels[model_id].model_name || regressionModels[model_id].name || model_id
                 }))}
                 disabled={isLoading}
                 onChange={handleChange}

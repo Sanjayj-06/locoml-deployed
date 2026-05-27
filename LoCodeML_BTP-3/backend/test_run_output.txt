@@ -1,0 +1,65 @@
+test_backend_frontend_task_metadata_sync (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_backend_frontend_task_metadata_sync) ... ok
+test_dataset_original_filename_resolution (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_dataset_original_filename_resolution) ... ok
+test_graph_has_cycle (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_graph_has_cycle) ... ok
+test_huggingface_runtime_pipeline_execution (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_huggingface_runtime_pipeline_execution) ... ok
+test_image_dataset_with_tabular_preprocess (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_image_dataset_with_tabular_preprocess) ... ok
+test_image_pipeline_runtime_execution (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_image_pipeline_runtime_execution) ... ok
+test_incompatible_task_combination (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_incompatible_task_combination) ... ok
+test_inference_mode_bypasses_target_missing (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_inference_mode_bypasses_target_missing) ... ok
+test_inference_mode_target_column_not_required (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_inference_mode_target_column_not_required) ... ok
+test_isolated_and_unreachable_nodes (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_isolated_and_unreachable_nodes) ... ok
+test_isolated_terminal_model_blocks_readiness (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_isolated_terminal_model_blocks_readiness) ... ok
+test_live_node_metadata_priority (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_live_node_metadata_priority) ... ok
+test_manual_input_preprocessing_bypass (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_manual_input_preprocessing_bypass) ... ok
+test_manual_input_task_type_inheritance (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_manual_input_task_type_inheritance) ... ok
+test_missing_dataset_no_mismatch_warning (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_missing_dataset_no_mismatch_warning) ... ok
+test_missing_hf_task (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_missing_hf_task) ... ok
+test_missing_inputs_node (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_missing_inputs_node) ... ok
+test_missing_model_file (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_missing_model_file) ... ok
+test_missing_model_selection (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_missing_model_selection) ... ok
+test_preprocessing_returns_empty_dataframe (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_preprocessing_returns_empty_dataframe) ... ok
+test_preprocessing_returns_none (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_preprocessing_returns_none) ... ok
+test_realtime_dataset_rebind_validation (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_realtime_dataset_rebind_validation) ... ok
+test_realtime_model_rebind_validation (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_realtime_model_rebind_validation) ... ok
+test_regression_dataset_with_incompatible_nodes (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_regression_dataset_with_incompatible_nodes) ... ok
+test_resolver_button_state_transition (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_resolver_button_state_transition) ... ok
+test_runtime_column_order_alignment (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_column_order_alignment) ... ok
+test_runtime_disconnected_execution_chain (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_disconnected_execution_chain) ... ok
+test_runtime_edge_traversal_order (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_edge_traversal_order) ... ok
+test_runtime_exception_propagation (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_exception_propagation) ... ok
+test_runtime_extra_unused_columns (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_extra_unused_columns) ... ok
+test_runtime_feature_alignment_normalization (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_feature_alignment_normalization) ... ok
+test_runtime_invalid_pickle (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_invalid_pickle) ... ok
+test_runtime_large_batch_inference (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_large_batch_inference) ... ok
+test_runtime_missing_artifact_file (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_missing_artifact_file) ... ok
+test_runtime_missing_predict_method (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_missing_predict_method) ... ok
+test_runtime_missing_required_feature_column (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_missing_required_feature_column) ... ok
+test_runtime_nan_only_dataframe (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_nan_only_dataframe) ... ok
+test_runtime_prediction_failure_trace (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_prediction_failure_trace) ... ok
+test_runtime_prediction_success (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_prediction_success) ... ok
+test_runtime_single_row_inference (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_runtime_single_row_inference) ... ok
+test_schema_feature_subset_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_schema_feature_subset_mismatch) ... ok
+test_schema_model_task_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_schema_model_task_mismatch) ... ok
+test_schema_robust_column_extraction (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_schema_robust_column_extraction) ... ok
+test_schema_target_column_missing (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_schema_target_column_missing) ... ok
+test_schema_target_type_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_schema_target_type_mismatch) ... ok
+test_semantic_classification_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_semantic_classification_mismatch) ... ok
+test_semantic_image_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_semantic_image_mismatch) ... ok
+test_semantic_regression_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_semantic_regression_mismatch) ... ok
+test_semantic_sentiment_mismatch (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_semantic_sentiment_mismatch) ... ok
+test_success_message_rendering (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_success_message_rendering) ... ok
+test_target_leakage_warning_only (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_target_leakage_warning_only) ... ok
+test_training_mode_target_column_required (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_training_mode_target_column_required) ... ok
+test_valid_graph (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_valid_graph) ... ok
+test_validation_cache_cleanup_after_fix (backend.tests.test_resolver_assistant.TestResolverAssistantValidation.test_validation_cache_cleanup_after_fix) ... ok
+
+----------------------------------------------------------------------
+Ran 54 tests in 3.078s
+
+OK
+
+
+SUMMARY:
+Success: True
+Failures: 0
+Errors: 0

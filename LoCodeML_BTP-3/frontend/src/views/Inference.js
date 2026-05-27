@@ -209,6 +209,18 @@ function Inference() {
     const [selectedModel, setSelectedModel] = useState(null);
     const [validationResult, setValidationResult] = useState({ valid: true, issues: [] });
     const [resolverStatus, setResolverStatus] = useState("IDLE");
+    const [resolverMessages, setResolverMessages] = useState([]);
+    const [resolverSelectedIssue, setResolverSelectedIssue] = useState(null);
+    const [resolverSuggestedActions, setResolverSuggestedActions] = useState([]);
+
+    React.useEffect(() => {
+        console.log("[Resolver Debug] Inference Page mounted");
+        return () => console.log("[Resolver Debug] Inference Page unmounted");
+    }, []);
+
+    React.useEffect(() => {
+        console.log("[Resolver Debug] resolverMessages updated:", resolverMessages);
+    }, [resolverMessages]);
 
     function handleModelSelection(model) {
         setSelectedModel(model);
@@ -426,6 +438,33 @@ function Inference() {
         setIsResolverOpen(true);
     };
 
+    const handleHighlightNode = (nodeId) => {
+        if (!nodeId) return;
+        try {
+            setNodes((nds) => nds.map(node => {
+                if (node.id === nodeId) {
+                    return { ...node, selected: true };
+                }
+                return { ...node, selected: false };
+            }));
+
+            if (reactFlowInstance && typeof reactFlowInstance.getNode === 'function') {
+                const targetNode = reactFlowInstance.getNode(nodeId);
+                if (targetNode && targetNode.position) {
+                    const x = targetNode.position.x;
+                    const y = targetNode.position.y;
+                    if (typeof reactFlowInstance.setCenter === 'function') {
+                        reactFlowInstance.setCenter(x + 75, y + 40, { zoom: 1.2, duration: 800 });
+                    } else if (typeof reactFlowInstance.setViewport === 'function') {
+                        reactFlowInstance.setViewport({ x: -x + 300, y: -y + 200, zoom: 1.1 }, { duration: 800 });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Failed to highlight node:", err);
+        }
+    };
+
     async function applyGraphAction(action) {
         setResolverStatus("FIXING");
         switch (action.type) {
@@ -628,6 +667,19 @@ function Inference() {
                     (e) => !(e.source === action.source && e.target === action.target)
                 ));
                 break;
+            case "bind_dataset": {
+                try {
+                    const res = await axios.get("http://localhost:5001/getDatasets");
+                    const datasets = res.data?.dataset_list || [];
+                    if (datasets.length > 0) {
+                        const firstDs = datasets[0];
+                        handleDatasetBind(action.node_id, firstDs);
+                    }
+                } catch (err) {
+                    console.error("Failed to auto-bind dataset:", err);
+                }
+                break;
+            }
             default:
                 console.warn("Unknown graph mutation type:", action.type);
                 break;
@@ -1273,9 +1325,13 @@ function Inference() {
                             nodes={nodes}
                             edges={edges}
                             datasetInfo={datasetInfo}
-                            onApplyFix={applyGraphAction}
                             validationResult={validationResult}
                             triggerValidation={runLocalValidation}
+                            onHighlightNode={handleHighlightNode}
+                            messages={resolverMessages}
+                            setMessages={setResolverMessages}
+                            selectedIssue={resolverSelectedIssue}
+                            setSelectedIssue={setResolverSelectedIssue}
                         />
                         <Modal
                             open={open}

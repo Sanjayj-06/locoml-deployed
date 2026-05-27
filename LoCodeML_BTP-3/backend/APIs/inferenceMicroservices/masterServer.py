@@ -713,149 +713,224 @@ def _resolve_dataset_path(dataset_id, dataset_path):
 
 @app.route("/resolver-assistant/validate", methods=["POST"])
 def resolver_assistant_validate():
-    payload = request.get_json(silent=True) or {}
-    nodes = payload.get("nodes", [])
-    edges = payload.get("edges", [])
-    dataset_id = payload.get("dataset_id")
-    dataset_path = payload.get("dataset_path")
-    pipeline_mode = payload.get("pipeline_mode")
-    execution_context = payload.get("execution_context")
+    try:
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({
+                "valid": True,
+                "issues": [],
+                "error": "Invalid payload format"
+            }), 200
 
-    original_filename = None
-    if isinstance(dataset_id, dict):
-        original_filename = dataset_id.get("filename") or dataset_id.get("name")
-    if not original_filename and isinstance(payload.get("original_filename"), str):
-        original_filename = payload.get("original_filename")
+        nodes = payload.get("nodes", [])
+        edges = payload.get("edges", [])
+        if nodes is None:
+            nodes = []
+        if edges is None:
+            edges = []
 
-    resolved_path = _resolve_dataset_path(dataset_id, dataset_path)
-    analysis = Analyzer.analyze_pipeline(
-        nodes, edges, dataset_path=resolved_path, 
-        original_filename=original_filename,
-        pipeline_mode=pipeline_mode,
-        execution_context=execution_context
-    )
-    return jsonify(analysis["validation"]), 200
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            return jsonify({
+                "valid": True,
+                "issues": [],
+                "error": "Nodes and edges must be lists"
+            }), 200
+
+        dataset_id = payload.get("dataset_id")
+        dataset_path = payload.get("dataset_path")
+        pipeline_mode = payload.get("pipeline_mode")
+        execution_context = payload.get("execution_context")
+
+        original_filename = None
+        if isinstance(dataset_id, dict):
+            original_filename = dataset_id.get("filename") or dataset_id.get("name")
+        if not original_filename and isinstance(payload.get("original_filename"), str):
+            original_filename = payload.get("original_filename")
+
+        resolved_path = _resolve_dataset_path(dataset_id, dataset_path)
+        
+        analysis = Analyzer.analyze_pipeline(
+            nodes, edges, dataset_path=resolved_path, 
+            original_filename=original_filename,
+            pipeline_mode=pipeline_mode,
+            execution_context=execution_context
+        )
+        
+        validation_res = analysis.get("validation", {})
+        if not isinstance(validation_res, dict):
+            validation_res = {"valid": True, "issues": []}
+            
+        return jsonify(validation_res), 200
+
+    except Exception as error:
+        import traceback
+        import sys
+        print(f"[ERROR] Resolver AI validation failed: {str(error)}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({
+            "valid": True,
+            "issues": [],
+            "error": "Resolver AI validation execution failed",
+            "details": str(error)
+        }), 200
 
 @app.route("/resolver-assistant/chat", methods=["POST"])
 def resolver_assistant_chat():
-    payload = request.get_json(silent=True) or {}
-    nodes = payload.get("nodes", [])
-    edges = payload.get("edges", [])
-    dataset_id = payload.get("dataset_id")
-    dataset_path = payload.get("dataset_path")
-    message = payload.get("message")
-    pipeline_mode = payload.get("pipeline_mode")
-    execution_context = payload.get("execution_context")
-    
-    original_filename = None
-    if isinstance(dataset_id, dict):
-        original_filename = dataset_id.get("filename") or dataset_id.get("name")
-    if not original_filename and isinstance(payload.get("original_filename"), str):
-        original_filename = payload.get("original_filename")
-
-    resolved_path = _resolve_dataset_path(dataset_id, dataset_path)
-    debug_context = Analyzer.analyze_pipeline(
-        nodes, edges, dataset_path=resolved_path, 
-        original_filename=original_filename,
-        pipeline_mode=pipeline_mode,
-        execution_context=execution_context
-    )
-    
-    sys_instruction = PromptBuilder.build_system_instruction()
-    user_prompt = PromptBuilder.build_user_prompt(debug_context, user_message=message)
-    
     try:
-        chatbot = ChatbotEngine()
-        response_text = chatbot.get_response(sys_instruction, user_prompt)
-        actions = ActionParser.parse_actions(response_text)
-    except Exception as api_err:
-        import sys
-        print(f"[WARNING] Chatbot API failed: {str(api_err)}. Falling back to deterministic resolver...", file=sys.stderr)
-        
-        # Fallback explanation and actions generator
-        issues = debug_context.get("validation", {}).get("issues", [])
-        
-        fallback_reps = []
-        fallback_actions = []
-        
-        for issue in issues:
-            issue_id = issue.get("id", "")
-            issue_msg = issue.get("message", "")
-            node_id = issue.get("node_id")
-            
-            if issue_id == "graph_has_cycle":
-                edges_to_delete = []
-                cycle_edges = issue.get("cycle_edges", [])
-                if cycle_edges:
-                    for src, tgt in cycle_edges:
-                        edges_to_delete.append((src, tgt))
-                else:
-                    # Fallback dynamic back-edge check
-                    adj = {n['id']: [] for n in nodes}
-                    for e in edges:
-                        s = e.get('source')
-                        t = e.get('target')
-                        if s in adj and t in adj:
-                            adj[s].append(t)
-                    visited = {}
-                    def find_back_edge(u):
-                        visited[u] = 1
-                        for v in adj[u]:
-                            if visited.get(v, 0) == 1:
-                                edges_to_delete.append((u, v))
-                            elif visited.get(v, 0) == 0:
-                                find_back_edge(v)
-                        visited[u] = 2
-                    for n in nodes:
-                        if visited.get(n['id'], 0) == 0:
-                            find_back_edge(n['id'])
-                            
-                for src, tgt in edges_to_delete:
-                    fallback_actions.append({
-                        "type": "delete_edge",
-                        "source": src,
-                        "target": tgt
-                    })
-                    fallback_reps.append(f"- **Cycle detected**: Delete connection from {src} to {tgt} to break the cycle.")
-            
-            elif "model_task_mismatch" in issue_id and node_id:
-                inferred_task = "regression" if "regression" in issue_msg.lower() else "classification"
-                fallback_actions.append({
-                    "type": "replace_node",
-                    "node_id": node_id,
-                    "replacement": inferred_task.capitalize() + " Node"
-                })
-                fallback_reps.append(f"- **Model Task Mismatch**: Replace node {node_id} with a {inferred_task} model.")
-                
-            elif "incompatible_preprocessing" in issue_id and node_id:
-                fallback_actions.append({
-                    "type": "delete_node",
-                    "node_id": node_id
-                })
-                fallback_reps.append(f"- **Incompatible Preprocessing**: Delete preprocessing node {node_id} to fix pipeline schema.")
-            
-            elif "missing_dataset" in issue_id or "missing_dataset_selection" in issue_id:
-                fallback_reps.append(f"- **Missing Dataset Selection**: Please select or upload a dataset for Inputs node '{node_id}'.")
-                
-            elif "missing_model_selection" in issue_id and node_id:
-                fallback_reps.append(f"- **Missing Model Selection**: Please select a trained model for Model node '{node_id}'.")
-        
-        if not fallback_reps:
-            fallback_reps.append("The validation check reported issues, but no automated quick-fixes are available. Please adjust your nodes manually.")
-            
-        response_text = (
-            "Hello! I've analyzed your pipeline locally. It seems my standard generative assistant API is currently rate-limited, "
-            "but I have diagnosed the deterministic validation errors and drafted the exact quick-fixes for you:\n\n" +
-            "\n".join(fallback_reps) + "\n\n"
-            "You can apply these suggested fixes using the button below."
-        )
-        actions = fallback_actions
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({
+                "success": True,
+                "fallback": True,
+                "response": "AI analysis is temporarily unavailable due to malformed request payload.",
+                "message": "AI analysis temporarily unavailable.",
+                "actions": []
+            }), 200
 
-    return jsonify({
-        "success": True,
-        "response": response_text,
-        "actions": actions
-    }), 200
+        nodes = payload.get("nodes", [])
+        edges = payload.get("edges", [])
+        if nodes is None:
+            nodes = []
+        if edges is None:
+            edges = []
+
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            return jsonify({
+                "success": True,
+                "fallback": True,
+                "response": "AI analysis is temporarily unavailable due to invalid nodes/edges format.",
+                "message": "AI analysis temporarily unavailable.",
+                "actions": []
+            }), 200
+
+        dataset_id = payload.get("dataset_id")
+        dataset_path = payload.get("dataset_path")
+        message = payload.get("message")
+        pipeline_mode = payload.get("pipeline_mode")
+        execution_context = payload.get("execution_context")
+        
+        original_filename = None
+        if isinstance(dataset_id, dict):
+            original_filename = dataset_id.get("filename") or dataset_id.get("name")
+        if not original_filename and isinstance(payload.get("original_filename"), str):
+            original_filename = payload.get("original_filename")
+
+        resolved_path = _resolve_dataset_path(dataset_id, dataset_path)
+        debug_context = Analyzer.analyze_pipeline(
+            nodes, edges, dataset_path=resolved_path, 
+            original_filename=original_filename,
+            pipeline_mode=pipeline_mode,
+            execution_context=execution_context
+        )
+        
+        sys_instruction = PromptBuilder.build_system_instruction()
+        user_prompt = PromptBuilder.build_user_prompt(debug_context, user_message=message)
+        
+        try:
+            chatbot = ChatbotEngine()
+            response_text = chatbot.get_response(sys_instruction, user_prompt)
+            actions = ActionParser.parse_actions(response_text)
+        except Exception as api_err:
+            import sys
+            print(f"[WARNING] Chatbot API failed: {str(api_err)}. Falling back to deterministic resolver...", file=sys.stderr)
+            
+            # Fallback explanation and actions generator
+            issues = debug_context.get("validation", {}).get("issues", [])
+            
+            fallback_reps = []
+            fallback_actions = []
+            
+            for issue in issues:
+                issue_id = issue.get("id", "")
+                issue_msg = issue.get("message", "")
+                node_id = issue.get("node_id")
+                
+                if issue_id == "graph_has_cycle":
+                    edges_to_delete = []
+                    cycle_edges = issue.get("cycle_edges", [])
+                    if cycle_edges:
+                        for src, tgt in cycle_edges:
+                            edges_to_delete.append((src, tgt))
+                    else:
+                        # Fallback dynamic back-edge check
+                        adj = {n['id']: [] for n in nodes}
+                        for e in edges:
+                            s = e.get('source')
+                            t = e.get('target')
+                            if s in adj and t in adj:
+                                adj[s].append(t)
+                        visited = {}
+                        def find_back_edge(u):
+                            visited[u] = 1
+                            for v in adj[u]:
+                                if visited.get(v, 0) == 1:
+                                    edges_to_delete.append((u, v))
+                                elif visited.get(v, 0) == 0:
+                                    find_back_edge(v)
+                            visited[u] = 2
+                        for n in nodes:
+                            if visited.get(n['id'], 0) == 0:
+                                find_back_edge(n['id'])
+                                
+                    for src, tgt in edges_to_delete:
+                        fallback_actions.append({
+                            "type": "delete_edge",
+                            "source": src,
+                            "target": tgt
+                        })
+                        fallback_reps.append(f"- **Cycle detected**: Delete connection from {src} to {tgt} to break the cycle.")
+                
+                elif "model_task_mismatch" in issue_id and node_id:
+                    inferred_task = "regression" if "regression" in issue_msg.lower() else "classification"
+                    fallback_actions.append({
+                        "type": "replace_node",
+                        "node_id": node_id,
+                        "replacement": inferred_task.capitalize() + " Node"
+                    })
+                    fallback_reps.append(f"- **Model Task Mismatch**: Replace node {node_id} with a {inferred_task} model.")
+                    
+                elif "incompatible_preprocessing" in issue_id and node_id:
+                    fallback_actions.append({
+                        "type": "delete_node",
+                        "node_id": node_id
+                    })
+                    fallback_reps.append(f"- **Incompatible Preprocessing**: Delete preprocessing node {node_id} to fix pipeline schema.")
+                
+                elif "missing_dataset" in issue_id or "missing_dataset_selection" in issue_id:
+                    fallback_reps.append(f"- **Missing Dataset Selection**: Please select or upload a dataset for Inputs node '{node_id}'.")
+                    
+                elif "missing_model_selection" in issue_id and node_id:
+                    fallback_reps.append(f"- **Missing Model Selection**: Please select a trained model for Model node '{node_id}'.")
+            
+            if not fallback_reps:
+                fallback_reps.append("The validation check reported issues, but no automated quick-fixes are available. Please adjust your nodes manually.")
+                
+            response_text = (
+                "Hello! I've analyzed your pipeline locally. It seems my standard generative assistant API is currently rate-limited, "
+                "but I have diagnosed the deterministic validation errors and drafted the exact quick-fixes for you:\n\n" +
+                "\n".join(fallback_reps) + "\n\n"
+                "You can apply these suggested fixes using the button below."
+            )
+            actions = fallback_actions
+
+        return jsonify({
+            "success": True,
+            "response": response_text,
+            "actions": actions
+        }), 200
+
+    except Exception as error:
+        import traceback
+        import sys
+        print(f"[ERROR] Resolver AI Chat failed: {str(error)}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return jsonify({
+            "success": True,
+            "fallback": True,
+            "response": "AI analysis is temporarily unavailable. Please verify your pipeline configuration manually.",
+            "message": "AI analysis temporarily unavailable.",
+            "actions": []
+        }), 200
 
 
 

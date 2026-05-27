@@ -10,9 +10,17 @@ class IssueDetector:
         is_training = (pipeline_mode == "TRAINING" or execution_context == "FIT" or (pipeline_mode is None and execution_context is None))
         issues = []
         node_map = {n['id']: n for n in nodes}
+        model_node_types = ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']
+        input_node_types = ['inputData']
+
+        def is_input_node(node):
+            return node.get('type') in input_node_types or node.get('data', {}).get('label') == 'Inputs'
+
+        def is_model_node(node):
+            return node.get('type') in model_node_types
         
         # 1. Missing Inputs node
-        input_nodes = [n for n in nodes if n.get('type') == 'inputData' or n.get('data', {}).get('label') == 'Inputs']
+        input_nodes = [n for n in nodes if is_input_node(n)]
         if not input_nodes:
             issues.append({
                 "id": "missing_inputs_node",
@@ -36,12 +44,14 @@ class IssueDetector:
 
         # 2. Check for disconnected nodes or components
         adj = {n['id']: [] for n in nodes}
+        reverse_adj = {n['id']: [] for n in nodes}
         in_degree = {n['id']: 0 for n in nodes}
         for e in edges:
             src = e.get('source')
             tgt = e.get('target')
             if src in adj and tgt in adj:
                 adj[src].append(tgt)
+                reverse_adj[tgt].append(src)
                 in_degree[tgt] += 1
 
         # Check reachability from Inputs
@@ -55,9 +65,25 @@ class IssueDetector:
         for in_node in input_nodes:
             dfs(in_node['id'])
 
+        # Check weak connectivity against the input-side execution graph.
+        component_reachable = set()
+        stack = [n['id'] for n in input_nodes]
+        while stack:
+            current = stack.pop()
+            if current in component_reachable:
+                continue
+            component_reachable.add(current)
+            neighbors = set(adj[current]) | set(reverse_adj[current])
+            stack.extend([neighbor for neighbor in neighbors if neighbor not in component_reachable])
+
+        model_nodes = [n for n in nodes if is_model_node(n)]
+        any_model_reachable = False
+        isolated_model_nodes = set()
+
         for n in nodes:
             nid = n['id']
             label = n.get('data', {}).get('label', nid)
+            node_type = n.get('type')
             # Node completely isolated
             is_isolated = True
             for e in edges:
@@ -66,21 +92,86 @@ class IssueDetector:
                     break
             
             if is_isolated:
-                issues.append({
-                    "id": f"isolated_node_{nid}",
-                    "severity": "warning",
-                    "type": "disconnected_graph",
-                    "message": f"Node '{label}' ({nid}) is completely isolated from the graph.",
-                    "node_id": nid
-                })
+                if is_model_node(n):
+                    isolated_model_nodes.add(nid)
+                    issues.append({
+                        "id": f"disconnected_model_node_{nid}",
+                        "severity": "error",
+                        "type": "disconnected_model_node",
+                        "message": f"{label} node is disconnected from pipeline flow.",
+                        "node_id": nid
+                    })
+                    issues.append({
+                        "id": f"unreachable_terminal_node_{nid}",
+                        "severity": "error",
+                        "type": "unreachable_terminal_node",
+                        "message": f"{label} node cannot be reached from the execution input chain.",
+                        "node_id": nid
+                    })
+                    issues.append({
+                        "id": f"isolated_pipeline_component_{nid}",
+                        "severity": "error",
+                        "type": "isolated_pipeline_component",
+                        "message": f"{label} node exists in an isolated pipeline component.",
+                        "node_id": nid
+                    })
+                else:
+                    issues.append({
+                        "id": f"isolated_node_{nid}",
+                        "severity": "warning",
+                        "type": "disconnected_graph",
+                        "message": f"Node '{label}' ({nid}) is completely isolated from the graph.",
+                        "node_id": nid
+                    })
             elif nid not in reachable:
-                issues.append({
-                    "id": f"unreachable_node_{nid}",
-                    "severity": "error",
-                    "type": "disconnected_graph",
-                    "message": f"Node '{label}' ({nid}) is not reachable from any Inputs node.",
-                    "node_id": nid
-                })
+                if is_model_node(n):
+                    issues.append({
+                        "id": f"unreachable_terminal_node_{nid}",
+                        "severity": "error",
+                        "type": "unreachable_terminal_node",
+                        "message": f"{label} node is unreachable from the execution input chain.",
+                        "node_id": nid
+                    })
+                    issues.append({
+                        "id": f"disconnected_model_node_{nid}",
+                        "severity": "error",
+                        "type": "disconnected_model_node",
+                        "message": f"{label} node is disconnected from pipeline flow.",
+                        "node_id": nid
+                    })
+                else:
+                    issues.append({
+                        "id": f"unreachable_node_{nid}",
+                        "severity": "error",
+                        "type": "disconnected_graph",
+                        "message": f"Node '{label}' ({nid}) is not reachable from any Inputs node.",
+                        "node_id": nid
+                    })
+
+            if nid in reachable and is_model_node(n):
+                any_model_reachable = True
+
+        if input_nodes and model_nodes and not any_model_reachable:
+            issues.append({
+                "id": "incomplete_execution_chain",
+                "severity": "error",
+                "type": "incomplete_execution_chain",
+                "message": "Pipeline execution graph is incomplete. No model node is reachable from the input chain.",
+                "node_id": None
+            })
+
+        # Any model that is not in the same weakly connected component as Inputs is an isolated pipeline component.
+        if input_nodes:
+            for model_node in model_nodes:
+                model_id = model_node.get('id')
+                if model_id not in component_reachable and model_id not in isolated_model_nodes:
+                    issues.append({
+                        "id": f"isolated_pipeline_component_{model_id}",
+                        "severity": "error",
+                        "type": "isolated_pipeline_component",
+                        "message": f"{model_node.get('data', {}).get('label', model_id)} node belongs to an isolated pipeline component.",
+                        "node_id": model_id
+                    })
 
         # 3. Cycles detection (Simple DFS)
         visited = {} # 0 = unvisited, 1 = visiting, 2 = visited
@@ -155,7 +246,7 @@ class IssueDetector:
                     })
 
         # 5. Invalid evaluator check: Ensure we have at least one model node if there's an inputs node
-        model_nodes = [n for n in nodes if n.get('type') in ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']]
+        model_nodes = [n for n in nodes if n.get('type') in model_node_types]
         if input_nodes and not model_nodes:
             issues.append({
                 "id": "missing_model_node",

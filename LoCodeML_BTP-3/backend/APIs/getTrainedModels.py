@@ -15,112 +15,78 @@ def getTrainedModelListAll():
     return getTrainedModelList()
 
 
+def _safe_get_models_by_query(query=None):
+    try:
+        collection = db["Model_zoo"]
+        trained_model_list = []
+        cursor = collection.find(query) if query is not None else collection.find()
+        for model in cursor:
+            try:
+                if "_id" in model:
+                    model.pop("_id")
+                trained_model_list.append(json_util.dumps(model))
+            except Exception as item_err:
+                print(f"[WARNING] Skipping malformed model zoo entry: {item_err}")
+        return json_util.dumps({"trained_models": trained_model_list})
+    except Exception as e:
+        import traceback
+        import sys
+        print(f"[ERROR] Failed query model list: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return json_util.dumps({
+            "trained_models": [],
+            "error": "Failed to retrieve trained models registry",
+            "details": str(e)
+        })
+
 @getTrainedModels.route("/getTrainedModels", methods=["GET"])
 def getTrainedModelList():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    for model in collection.find():
-        print(type(model))
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    # return {'trained_models': trained_model_list}
-    return json_util.dumps({"trained_models": trained_model_list})
-
+    return _safe_get_models_by_query()
 
 @getTrainedModels.route("/getTrainedModels/classification", methods=["GET"])
 def getTrainedModelListClassification():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    query = {"objective": "classification"}
-    results = collection.find(query)
-
-    for model in results:
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    # return {'trained_models': trained_model_list}
-    return json_util.dumps({"trained_models": trained_model_list})
-
+    return _safe_get_models_by_query({"objective": "classification"})
 
 @getTrainedModels.route("/getTrainedModels/regression", methods=["GET"])
 def getTrainedModelListRegression():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    query = {"objective": "regression"}
-    results = collection.find(query)
-
-    for model in results:
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    # return {'trained_models': trained_model_list}
-    return json_util.dumps({"trained_models": trained_model_list})
-
+    return _safe_get_models_by_query({"objective": "regression"})
 
 @getTrainedModels.route("/getTrainedModels/sentiment", methods=["GET"])
 def getTrainedModelListSentiment():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    query = {"objective": "sentiment"}
-    results = collection.find(query)
-
-    # distinct_values = collection.distinct('objective')
-    # print(distinct_values)
-
-    for model in results:
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    # return {'trained_models': trained_model_list}
-    return json_util.dumps({"trained_models": trained_model_list})
+    return _safe_get_models_by_query({"objective": "sentiment"})
 
 @getTrainedModels.route("/getTrainedModels/imageclassification", methods=["GET"])
 def getTrainedModelListImageClassification():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    query = {"objective": "imageClassification"}
-    results = collection.find(query)
-
-    for model in results:
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    return json_util.dumps({"trained_models": trained_model_list})
+    return _safe_get_models_by_query({"objective": "imageClassification"})
 
 @getTrainedModels.route("/getTrainedModels/machinetranslation", methods=["GET"])
 def getTrainedModelListMachineTranslation():
-    collection = db["Model_zoo"]
-    trained_model_list = []
-
-    query = {"objective": "machineTranslation"}
-    results = collection.find(query)
-
-    for model in results:
-        model.pop("_id")
-        trained_model_list.append(json_util.dumps(model))
-
-    return json_util.dumps({"trained_models": trained_model_list})
+    return _safe_get_models_by_query({"objective": "machineTranslation"})
 
 @getTrainedModels.route("/getTrainedModels/<model_id>", methods=["GET"])
 def getTrainedModel(model_id):
-    # get model_id from endpoint
-    # model_id = request.view_args['model_id']
-    print(model_id)
-    collection = db["Model_zoo"]
-    trained_model = collection.find_one({"model_id": model_id})
-    if not trained_model:
-        return {"error": f"Model '{model_id}' not found"}, 404
+    try:
+        print(model_id)
+        collection = db["Model_zoo"]
+        trained_model = collection.find_one({"model_id": model_id})
+        if not trained_model:
+            return {"error": f"Model '{model_id}' not found"}, 404
 
-    # sort version array according to the date
-    if "versions" in trained_model and isinstance(trained_model["versions"], list):
-        trained_model["versions"].sort(key=lambda x: x["time"], reverse=True)
-    return json_util.dumps(trained_model)
+        # sort version array according to the date
+        if "versions" in trained_model and isinstance(trained_model["versions"], list):
+            try:
+                trained_model["versions"].sort(key=lambda x: x.get("time", 0), reverse=True)
+            except Exception as sort_err:
+                print(f"[WARNING] Failed to sort versions: {sort_err}")
+        if "_id" in trained_model:
+            trained_model.pop("_id")
+        return json_util.dumps(trained_model)
+    except Exception as e:
+        import traceback
+        import sys
+        print(f"[ERROR] Failed to fetch model {model_id}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return {"error": f"Failed to retrieve model details: {str(e)}"}, 500
 
 
 @getTrainedModels.route("/getTrainedModelFile/<model_id>/<version>", methods=["GET"])
