@@ -812,7 +812,7 @@ class IssueDetector:
         # Target column task type inference
         dtype = dtypes.get(target_col, '').lower()
         
-        if any(keyword in target_col.lower() for keyword in ['price', 'sales', 'amount', 'value', 'cost', 'temp']):
+        if any(keyword in target_col.lower() for keyword in ['price', 'sales', 'amount', 'value', 'cost', 'temp', 'score', 'grade', 'rating', 'count']):
             return 'REGRESSION'
             
         if any(keyword in target_col.lower() for keyword in ['class', 'label', 'category', 'churn', 'status', 'type', 'output']):
@@ -825,11 +825,20 @@ class IssueDetector:
             return 'CLASSIFICATION'
             
         if 'int' in dtype:
+            unique_count = dataset_meta.get("unique_counts", {}).get(target_col) if dataset_meta else None
+            if unique_count is not None:
+                if unique_count > 10:
+                    return 'REGRESSION'
+                else:
+                    return 'CLASSIFICATION'
             if sample_head:
                 unique_vals = set(row[target_col] for row in sample_head if target_col in row and row[target_col] is not None)
                 if len(unique_vals) > 10:
                     return 'REGRESSION'
                 else:
+                    target_lower = target_col.lower()
+                    if any(k in target_lower for k in ['score', 'grade', 'rating', 'count', 'num', 'pct', 'percent', 'val']):
+                        return 'REGRESSION'
                     return 'CLASSIFICATION'
             return 'CLASSIFICATION'
             

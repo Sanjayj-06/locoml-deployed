@@ -1385,6 +1385,46 @@ class TestResolverAssistantValidation(unittest.TestCase):
         self.assertEqual(prep_issues[0]["input_node_id"], "node_input")
         self.assertEqual(prep_issues[0]["model_node_id"], "node_model")
 
+    def test_infer_dataset_task_integer_scores(self):
+        from resolver_assistant.issue_detector import IssueDetector
+        
+        # Test case 1: Target column contains score continuous keyword, even with small sample_head preview
+        dataset_meta_1 = {
+            "name": "StudentsPerformance.csv",
+            "columns": ["gender", "race", "writing score"],
+            "dtypes": {"gender": "object", "race": "object", "writing score": "int64"},
+            "sample_head": [
+                {"gender": "female", "race": "group B", "writing score": 72},
+                {"gender": "male", "race": "group C", "writing score": 69},
+                {"gender": "female", "race": "group B", "writing score": 90}
+            ]
+        }
+        nodes_1 = [
+            {"id": "node_input", "type": "inputData", "data": {"label": "Inputs", "entity": "StudentsPerformance.csv"}},
+            {"id": "node_model", "type": "regression", "data": {"label": "Regression", "target_column": "writing score"}}
+        ]
+        inferred_1 = IssueDetector.infer_dataset_task(dataset_meta_1, nodes_1)
+        self.assertEqual(inferred_1, "REGRESSION")
+
+        # Test case 2: Target column contains no continuous keyword but has high unique count
+        dataset_meta_2 = {
+            "name": "integer_targets.csv",
+            "columns": ["feature_1", "target_var"],
+            "dtypes": {"feature_1": "int64", "target_var": "int64"},
+            "unique_counts": {"feature_1": 5, "target_var": 45},
+            "sample_head": [
+                {"feature_1": 1, "target_var": 12},
+                {"feature_1": 2, "target_var": 35},
+                {"feature_1": 3, "target_var": 8}
+            ]
+        }
+        nodes_2 = [
+            {"id": "node_input", "type": "inputData", "data": {"label": "Inputs", "entity": "integer_targets.csv"}},
+            {"id": "node_model", "type": "regression", "data": {"label": "Regression", "target_column": "target_var"}}
+        ]
+        inferred_2 = IssueDetector.infer_dataset_task(dataset_meta_2, nodes_2)
+        self.assertEqual(inferred_2, "REGRESSION")
+
 if __name__ == '__main__':
     unittest.main()
 

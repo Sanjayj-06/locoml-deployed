@@ -22,12 +22,19 @@ class Analyzer:
             if ext.lower() == '.csv':
                 df = pd.read_csv(dataset_path, nrows=5)
                 full_df = pd.read_csv(dataset_path)
+                unique_counts = {}
+                for col in full_df.columns:
+                    try:
+                        unique_counts[col] = int(full_df[col].nunique())
+                    except Exception:
+                        unique_counts[col] = 0
                 return {
                     "name": display_name,
                     "columns": list(df.columns),
                     "shape": list(full_df.shape),
                     "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-                    "sample_head": df.head(3).to_dict(orient='records')
+                    "sample_head": df.head(3).to_dict(orient='records'),
+                    "unique_counts": unique_counts
                 }
         except Exception as e:
             return {
