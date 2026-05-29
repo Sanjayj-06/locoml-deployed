@@ -449,11 +449,15 @@ def node_info():
                 hasSentIntermediate = False
 
             if node_label == 'Inputs' or node_type == 'inputData':
-                dataset_id_value, dataset_type_value = resolve_input_dataset(n)
-                if dataset_id_value and dataset_type_value:
-                    inputFiles[n['id']] = dataset_id_value
-                    global dataset_type
-                    dataset_type = dataset_type_value
+                entity = n.get('data', {}).get('entity')
+                if isinstance(entity, dict) and (entity.get('manual_inputs') or entity.get('dataset_type') == 'manual'):
+                    inputFiles.pop(n['id'], None)
+                    dataset_type = 'manual'
+                else:
+                    dataset_id_value, dataset_type_value = resolve_input_dataset(n)
+                    if dataset_id_value and dataset_type_value:
+                        inputFiles[n['id']] = dataset_id_value
+                        dataset_type = dataset_type_value
                 
         for n in nodeDetails:
             for id in inputFiles:
