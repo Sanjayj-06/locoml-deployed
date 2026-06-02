@@ -24,11 +24,11 @@ import { evaluateHealth } from './HealthEvaluator';
 import { buildPredictionMessage, simulateRuntimeMetrics } from './RuntimeHealthEngine';
 
 const MODEL_ENDPOINTS = {
-  classification: 'http://localhost:5001/getTrainedModels/classification',
-  regression: 'http://localhost:5001/getTrainedModels/regression',
-  sentiment: 'http://localhost:5001/getTrainedModels/sentiment',
-  imageclassification: 'http://localhost:5001/getTrainedModels/imageclassification',
-  machinetranslation: 'http://localhost:5001/getTrainedModels/machinetranslation',
+  classification: 'http://localhost:5000/getTrainedModels/classification',
+  regression: 'http://localhost:5000/getTrainedModels/regression',
+  sentiment: 'http://localhost:5000/getTrainedModels/sentiment',
+  imageclassification: 'http://localhost:5000/getTrainedModels/imageclassification',
+  machinetranslation: 'http://localhost:5000/getTrainedModels/machinetranslation',
 };
 
 const PRE_RUN_INFERENCE_ENDPOINT = 'http://localhost:5001/preRunNodeInference';

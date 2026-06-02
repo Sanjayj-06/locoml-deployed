@@ -764,6 +764,9 @@ def resolver_assistant_validate():
         if not isinstance(validation_res, dict):
             validation_res = {"valid": True, "issues": []}
             
+        if analysis.get("dataset_meta"):
+            validation_res["dataset_meta"] = analysis.get("dataset_meta")
+            
         return jsonify(validation_res), 200
 
     except Exception as error:

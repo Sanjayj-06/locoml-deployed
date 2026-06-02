@@ -504,7 +504,7 @@ function Inference() {
 
                 let boundModelData = null;
                 try {
-                    const res = await axios.get(`http://localhost:5001/getTrainedModels/${objective}`);
+                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
                     const responseData = res.data?.trained_models || [];
                     const trainedModels = responseData.map(modelStr => {
                         try {
@@ -528,6 +528,10 @@ function Inference() {
                         } else if (dsInfo.features) {
                             datasetColumns = dsInfo.features;
                         }
+                    }
+
+                    if ((!datasetColumns || datasetColumns.length === 0) && validationResult?.dataset_meta?.columns) {
+                        datasetColumns = validationResult.dataset_meta.columns;
                     }
 
                     const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
@@ -669,7 +673,7 @@ function Inference() {
                 break;
             case "bind_dataset": {
                 try {
-                    const res = await axios.get("http://localhost:5001/getDatasets");
+                    const res = await axios.get("http://localhost:5000/getDatasets");
                     const datasets = res.data?.dataset_list || [];
                     if (datasets.length > 0) {
                         const firstDs = datasets[0];
@@ -677,6 +681,85 @@ function Inference() {
                     }
                 } catch (err) {
                     console.error("Failed to auto-bind dataset:", err);
+                }
+                break;
+            }
+            case "auto_select_model": {
+                const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+                const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+                const modelNode = currentNodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
+                if (!modelNode) break;
+
+                let objective = "classification";
+                if (modelNode.type === 'regression') objective = "regression";
+                else if (modelNode.type === 'sentiment' || modelNode.type === 'huggingface') objective = "sentiment";
+                else if (modelNode.type === 'imageclassification') objective = "imageclassification";
+
+                try {
+                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
+                    const responseData = res.data?.trained_models || [];
+                    const trainedModels = responseData.map(modelStr => {
+                        try {
+                            return typeof modelStr === 'string' ? JSON.parse(modelStr.replace(/Infinity/g, "1e1000")) : modelStr;
+                        } catch (e) {
+                            return null;
+                        }
+                    }).filter(Boolean);
+
+                    const inpNode = currentNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+                    const dsInfo = inpNode?.data?.entity;
+
+                    let datasetColumns = [];
+                    if (dsInfo) {
+                        if (Array.isArray(dsInfo.columns)) {
+                            datasetColumns = dsInfo.columns;
+                        } else if (dsInfo.manual_input_order) {
+                            datasetColumns = dsInfo.manual_input_order;
+                        } else if (dsInfo.manual_inputs) {
+                            datasetColumns = Object.keys(dsInfo.manual_inputs);
+                        } else if (dsInfo.features) {
+                            datasetColumns = dsInfo.features;
+                        }
+                    }
+
+                    if ((!datasetColumns || datasetColumns.length === 0) && validationResult?.dataset_meta?.columns) {
+                        datasetColumns = validationResult.dataset_meta.columns;
+                    }
+
+                    const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
+
+                    let compatibleModel = null;
+                    for (const model of trainedModels) {
+                        const modelFeatures = model.training_columns || model.input_schema || [];
+                        const normModelFeatures = modelFeatures.map(f => {
+                            const colName = typeof f === 'object' ? (f.column_name || f.name || "") : String(f);
+                            return colName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        });
+
+                        const allFeaturesExist = normModelFeatures.every(f => normDatasetCols.has(f));
+                        if (allFeaturesExist) {
+                            compatibleModel = model;
+                            break;
+                        }
+                    }
+
+                    if (!compatibleModel && trainedModels.length > 0) {
+                        if (objective === 'imageclassification' || objective === 'sentiment') {
+                            compatibleModel = trainedModels[0];
+                        }
+                    }
+
+                    if (compatibleModel) {
+                        handleModelBind(modelNode.id, compatibleModel);
+                    } else {
+                        if (trainedModels.length === 0) {
+                            alert("No trained models found in your repository for the task '" + objective.toUpperCase() + "'. Please train a model first using the training wizard.");
+                        } else {
+                            alert("No compatible trained model was found matching this dataset's feature schema for the task '" + objective.toUpperCase() + "' in your registry. Please train a new model for this dataset.");
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to auto-select model:", err);
                 }
                 break;
             }
@@ -1332,6 +1415,8 @@ function Inference() {
                             setMessages={setResolverMessages}
                             selectedIssue={resolverSelectedIssue}
                             setSelectedIssue={setResolverSelectedIssue}
+                            applyGraphAction={applyGraphAction}
+                            setResolverStatus={setResolverStatus}
                         />
                         <Modal
                             open={open}

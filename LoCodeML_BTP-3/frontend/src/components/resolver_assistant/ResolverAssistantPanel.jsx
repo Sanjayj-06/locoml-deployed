@@ -138,10 +138,106 @@ const ResolverAssistantPanel = ({
   messages = [],
   setMessages,
   selectedIssue = null,
-  setSelectedIssue
+  setSelectedIssue,
+  applyGraphAction,
+  setResolverStatus
 }) => {
   const [collapsedDetails, setCollapsedDetails] = useState({});
   const [expandedExplanations, setExpandedExplanations] = useState({});
+  const [fixingAll, setFixingAll] = useState(false);
+
+  const hasInputSelection = () => {
+    const inputNode = nodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+    if (!inputNode) return false;
+    
+    const entity = inputNode.data?.entity;
+    const isManual = inputNode.data?.dataset_type === 'manual' || 
+                     (entity && typeof entity === 'object' && entity.manual_inputs);
+    
+    const hasDataset = !!(inputNode.data?.dataset_id || 
+                         (entity && typeof entity === 'object' && (entity.dataset_id || entity.id || entity.name || entity.filename)) ||
+                         (typeof entity === 'string' && entity));
+    
+    return !!(isManual || hasDataset);
+  };
+
+  const hasFixableIssues = () => {
+    return issues.some(issue => {
+      const issueId = issue.id || "";
+      if (issueId.includes("missing_inputs_node") || issueId.includes("missing_dataset") || issueId.includes("missing_dataset_selection")) {
+        return false;
+      }
+      if (issueId.includes("missing_model_selection") || issueId.includes("missing_model")) {
+        return hasInputSelection();
+      }
+      return true;
+    });
+  };
+
+  const handleFixAllIssues = async () => {
+    setFixingAll(true);
+    if (typeof setResolverStatus === 'function') {
+      setResolverStatus("FIXING");
+    }
+
+    try {
+      // 1. Check for missing model selection and autoselect model
+      const modelIssue = issues.find(issue => issue.id?.includes("missing_model_selection") || issue.id?.includes("missing_model"));
+      if (modelIssue && hasInputSelection()) {
+        if (typeof applyGraphAction === 'function') {
+          await applyGraphAction({
+            type: "auto_select_model",
+            node_id: modelIssue.node_id
+          });
+        }
+      }
+
+      // 2. Check for other structural issues and fix via LLM
+      const structuralIssues = issues.filter(issue => {
+        const id = issue.id || "";
+        return !id.includes("missing_inputs_node") && 
+               !id.includes("missing_dataset") && 
+               !id.includes("missing_dataset_selection") &&
+               !id.includes("missing_model");
+      });
+
+      if (structuralIssues.length > 0) {
+        const inputNode = nodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+        const dsInfo = inputNode?.data?.entity;
+
+        const payload = {
+          nodes: nodes,
+          edges: edges,
+          dataset_id: dsInfo,
+          original_filename: dsInfo?.filename || dsInfo?.name,
+          pipeline_mode: pipelineMode,
+          message: `Please fix all pipeline validation issues. Generate structured repair actions to resolve disconnected nodes, cycles, and isolated components.`
+        };
+
+        const response = await axios.post("http://localhost:5001/resolver-assistant/chat", payload);
+        const data = response.data;
+
+        if (data && Array.isArray(data.actions) && data.actions.length > 0) {
+          for (const action of data.actions) {
+            if (typeof applyGraphAction === 'function') {
+              await applyGraphAction(action);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fix issues automatically:", err);
+      alert("AI Auto Fix encountered an error. Some issues may need manual adjustment.");
+    } finally {
+      setFixingAll(false);
+      if (typeof setResolverStatus === 'function') {
+        setResolverStatus("IDLE");
+      }
+      if (typeof triggerValidation === 'function') {
+        triggerValidation();
+      }
+    }
+  };
 
   const toggleExplanation = (idx) => {
     setExpandedExplanations(prev => ({
@@ -348,25 +444,48 @@ const ResolverAssistantPanel = ({
             boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
             display: "flex",
             flexDirection: "column",
-            gap: "4px"
+            gap: "12px"
           }}
         >
-          <Box display="flex" alignItems="center" gap={1}>
-            {valid ? (
-              <CheckCircleOutlineIcon style={{ color: "#059669", fontSize: "18px" }} />
-            ) : (
-              <WarningAmberIcon style={{ color: "#D97706", fontSize: "18px" }} />
-            )}
-            <Typography variant="subtitle2" style={{ fontWeight: 600, color: valid ? "#065F46" : "#92400E", fontSize: "13px" }}>
-              {valid ? "Pipeline Semantically Sound" : `${issues.length} Blocker Issue${issues.length > 1 ? "s" : ""} Detected`}
+          <Box display="flex" flexDirection="column" gap="4px">
+            <Box display="flex" alignItems="center" gap={1}>
+              {valid ? (
+                <CheckCircleOutlineIcon style={{ color: "#059669", fontSize: "18px" }} />
+              ) : (
+                <WarningAmberIcon style={{ color: "#D97706", fontSize: "18px" }} />
+              )}
+              <Typography variant="subtitle2" style={{ fontWeight: 600, color: valid ? "#065F46" : "#92400E", fontSize: "13px" }}>
+                {valid ? "Pipeline Semantically Sound" : `${issues.length} Blocker Issue${issues.length > 1 ? "s" : ""} Detected`}
+              </Typography>
+            </Box>
+            <Typography variant="body2" style={{ color: valid ? "#047857" : "#B45309", fontSize: "12px", paddingLeft: "26px", lineHeight: "1.4" }}>
+              {valid 
+                ? "All validation checks passed. The pipeline is fully configured and ready for execution." 
+                : "Review the diagnostics and recommended repairs below to fix structural anomalies."
+              }
             </Typography>
           </Box>
-          <Typography variant="body2" style={{ color: valid ? "#047857" : "#B45309", fontSize: "12px", paddingLeft: "26px", lineHeight: "1.4" }}>
-            {valid 
-              ? "All validation checks passed. The pipeline is fully configured and ready for execution." 
-              : "Review the diagnostics and recommended repairs below to fix structural anomalies."
-            }
-          </Typography>
+          {!valid && hasFixableIssues() && (
+            <Button
+              variant="contained"
+              disabled={fixingAll}
+              onClick={handleFixAllIssues}
+              startIcon={fixingAll ? <CircularProgress size={16} color="inherit" /> : undefined}
+              style={{
+                backgroundColor: "#4F46E5",
+                color: "#FFFFFF",
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "12px",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                width: "100%",
+                boxShadow: "0 2px 4px rgba(79, 70, 229, 0.15)"
+              }}
+            >
+              {fixingAll ? "Fixing Issues..." : "Fix Issues"}
+            </Button>
+          )}
         </Box>
 
         {/* Section 3: Validation Timeline (CI/CD Style) */}
