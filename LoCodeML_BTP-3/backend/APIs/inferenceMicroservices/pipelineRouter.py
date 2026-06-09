@@ -18,6 +18,7 @@ from flask_cors import CORS
 load_dotenv(find_dotenv())
 sys.path.append(os.getenv('PROJECT_PATH'))
 from mongoDB import db
+from auth_helper import get_user_from_request
 
 load_dotenv(dotenv_path="../../.env")
 env_path = os.getenv("PROJECT_PATH")
@@ -52,6 +53,7 @@ def save_pipeline():
     pipeline_id = nanoid.generate(alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', size=6)
 
     collection = db['Inference_Pipelines']
+    username = get_user_from_request()
 
     collection.insert_one({
         'time': datetime.datetime.now(),
@@ -59,6 +61,7 @@ def save_pipeline():
         'pipeline_name': pipeline_name,
         'nodes': nodes,
         'edges': edges,
+        'username': username,
     })
 
     return json_util.dumps({'status': 'success', 'dataset_id': pipeline_id})
@@ -74,8 +77,10 @@ def get_pipelines_list():
 
     collection = db['Inference_Pipelines']
     pipelines_list = []
-    total_pipelines = collection.count_documents({})
-    for pipeline in collection.find().skip(offset).limit(limit):
+    username = get_user_from_request()
+    query = {'username': username} if username else {'username': {'$exists': False}}
+    total_pipelines = collection.count_documents(query)
+    for pipeline in collection.find(query).skip(offset).limit(limit):
         pipeline.pop('_id')
         pipelines_list.append(pipeline)
 
@@ -98,7 +103,11 @@ def retrieve_pipeline_details():
 
 def get_pipeline_details_by_ID(pipeline_id):
     collection = db['Inference_Pipelines']
-    pipeline_info = list(collection.find({"pipeline_id": pipeline_id}))
+    query = {"pipeline_id": pipeline_id}
+    username = get_user_from_request()
+    if username:
+        query["username"] = username
+    pipeline_info = list(collection.find(query))
     if not pipeline_info:
         return json_util.dumps({"message": "Invalid request. No pipeline is saved with this pipeline ID."})
     return json_util.dumps(pipeline_info[0])  # Ideally, there shouldn't be multiple pipelines with the same ID as

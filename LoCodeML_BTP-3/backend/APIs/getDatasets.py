@@ -5,8 +5,7 @@ import os
 import sys 
 sys.path.append(os.getenv('PROJECT_PATH'))
 import bson.json_util as json_util
-
-from mongoDB import db
+from auth_helper import get_user_from_request
 
 getDatasets = Blueprint('getDatasets', __name__)
 
@@ -31,7 +30,9 @@ def getDatasetList():
         import datetime
         collection = db['Datasets']
 
-        dataset_list = list(collection.find({}))
+        username = get_user_from_request()
+        query = {'username': username} if username else {'username': {'$exists': False}}
+        dataset_list = list(collection.find(query))
         filtered_list = []
 
         for dataset in dataset_list:
@@ -70,7 +71,11 @@ def getDatasetList():
 def getDatasetInfo(dataset_id):
     try:
         collection = db['Datasets']
-        dataset_info = collection.find_one({'dataset_id': dataset_id})
+        username = get_user_from_request()
+        query = {'dataset_id': dataset_id}
+        if username:
+            query['username'] = username
+        dataset_info = collection.find_one(query)
         if not dataset_info:
             return jsonify({'error': f'Dataset {dataset_id} not found'}), 404
         return json_util.dumps(dataset_info)
@@ -85,7 +90,11 @@ def getDatasetInfo(dataset_id):
 def getDataset(dataset_id, dataset_type):
     # read file from Datasets folder
     # return file
-    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    username = get_user_from_request()
+    query = {'dataset_id': dataset_id}
+    if username:
+        query['username'] = username
+    dataset_info = db['Datasets'].find_one(query)
     dataset_path, _ = resolve_dataset_path(
         dataset_id,
         dataset_type,

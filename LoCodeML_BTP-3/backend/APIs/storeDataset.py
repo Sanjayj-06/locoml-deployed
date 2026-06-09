@@ -7,6 +7,7 @@ sys.path.append(os.getenv('PROJECT_PATH'))
 
 storeDataset = Blueprint('storeDataset', __name__)
 from mongoDB import db
+from auth_helper import get_user_from_request
 
 @storeDataset.route('/storeDataset', methods=['GET', 'POST'])
 def storeDatasetFile():
@@ -31,6 +32,7 @@ def storeDatasetFile():
     dataset_file.save(dataset_path)
 
     collection = db['Datasets']
+    username = get_user_from_request()
 
     collection.insert_one({
         'time' : datetime.datetime.now(),
@@ -38,7 +40,8 @@ def storeDatasetFile():
         'dataset_size' : dataset_size,
         'dataset_name': dataset_name,
         'dataset_path': dataset_path,
-        'dataset_type': dataset_type
+        'dataset_type': dataset_type,
+        'username': username
     })
 
     return {'status': 'success', 'dataset_id': dataset_id, 'dataset_name': dataset_name}

@@ -9,6 +9,7 @@ load_dotenv()
 HYPERBOLIC_API_KEY = os.getenv("HYPERBOLIC_API_KEY")
 
 sys.path.append(os.getenv('PROJECT_PATH'))
+from auth_helper import get_user_from_request
 
 from APIs.generatePipeline.llm import LLMService
 from APIs.generatePipeline.promptLLM import PipelinePromptService
@@ -51,7 +52,9 @@ class PipelineParamsLoader:
         """Load the most recent pipeline parameters from MongoDB, then fall back to file."""
         try:
             collection = db["Pipeline_Requests"]
-            params = collection.find_one(sort=[("updated_at", -1)])
+            username = get_user_from_request()
+            query = {'username': username} if username else {'username': {'$exists': False}}
+            params = collection.find_one(query, sort=[("updated_at", -1)])
 
             if not params:
                 if not os.path.exists(self.params_file):

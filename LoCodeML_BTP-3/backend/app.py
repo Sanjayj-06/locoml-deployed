@@ -19,6 +19,7 @@ from APIs.apply_preprocessing import apply_preprocess
 from APIs.pipelineGenerator import pipelineGenerator
 from APIs.processQuery import processQuery
 from APIs.stressTest import stressTestAPIs
+from APIs.auth import auth_blueprint
 
 app = Flask(__name__)
 CORS(app)
@@ -41,6 +42,7 @@ app.register_blueprint(apply_preprocess)
 app.register_blueprint(pipelineGenerator)
 app.register_blueprint(processQuery)
 app.register_blueprint(stressTestAPIs)
+app.register_blueprint(auth_blueprint)
 
 app.config['REDIS_URL'] = os.getenv('REDIS_URL')
 

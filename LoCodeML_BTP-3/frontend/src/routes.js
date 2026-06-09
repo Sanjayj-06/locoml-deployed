@@ -30,6 +30,7 @@ import UpdateModel from "views/UpdateModel";
 import InferenceZoo from "./views/InferenceZoo";
 import ProcessSavedPipeline from "./views/ProcessSavedPipeline";
 import StressTest from "views/StressTest";
+import User from "views/User";
 
 var routes = [
   {
@@ -38,6 +39,13 @@ var routes = [
     showInSidebar: true,
     // icon: "nc-icon nc-bank",
     component: <Dashboard />,
+  },
+  {
+    path: "/user-profile",
+    name: "User Profile",
+    showInSidebar: true,
+    icon: "nc-icon nc-single-02",
+    component: <User />,
   },
   {
     path: "/upload-data",

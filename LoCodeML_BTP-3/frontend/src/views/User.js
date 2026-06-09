@@ -16,7 +16,8 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 // reactstrap components
 import {
@@ -31,9 +32,108 @@ import {
   Input,
   Row,
   Col,
+  Alert
 } from "reactstrap";
 
 function User() {
+  const [profileData, setProfileData] = useState({
+    username: "",
+    email: "",
+    firstName: "",
+    lastName: "",
+    company: "",
+    address: "",
+    city: "",
+    country: "",
+    postalCode: "",
+    aboutMe: ""
+  });
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`${apiBaseUrl}/api/auth/profile`);
+        if (response.data && response.data.success) {
+          const u = response.data.user;
+          const nameParts = (u.name || "").split(" ");
+          const firstName = nameParts[0] || "";
+          const lastName = nameParts.slice(1).join(" ") || "";
+          setProfileData({
+            username: u.username || "",
+            email: u.email || "",
+            firstName: firstName,
+            lastName: lastName,
+            company: u.company || "",
+            address: u.address || "",
+            city: u.city || "",
+            country: u.country || "",
+            postalCode: u.postal_code || "",
+            aboutMe: u.about_me || ""
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+        setError("Could not load profile details from backend.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [apiBaseUrl]);
+
+  const handleChange = (e) => {
+    setProfileData({
+      ...profileData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    
+    try {
+      const fullName = `${profileData.firstName} ${profileData.lastName}`.trim();
+      const response = await axios.put(`${apiBaseUrl}/api/auth/profile`, {
+        name: fullName,
+        company: profileData.company,
+        address: profileData.address,
+        city: profileData.city,
+        country: profileData.country,
+        postal_code: profileData.postalCode,
+        about_me: profileData.aboutMe
+      });
+
+      if (response.data && response.data.success) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        setMessage("Profile updated successfully!");
+      } else {
+        setError(response.data.error || "Update failed");
+      }
+    } catch (err) {
+      console.error("Error updating user profile:", err);
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError("Failed to save profile changes.");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="content text-center py-5">
+        <h4>Loading Profile...</h4>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="content">
@@ -51,136 +151,31 @@ function User() {
                       className="avatar border-gray"
                       src={require("assets/img/mike.jpg")}
                     />
-                    <h5 className="title">Chet Faker</h5>
+                    <h5 className="title">
+                      {profileData.firstName || profileData.lastName
+                        ? `${profileData.firstName} ${profileData.lastName}`.trim()
+                        : profileData.username}
+                    </h5>
                   </a>
-                  <p className="description">@chetfaker</p>
+                  <p className="description">@{profileData.username}</p>
                 </div>
                 <p className="description text-center">
-                  "I like the way you work it <br />
-                  No diggity <br />I wanna bag it up"
+                  "{profileData.aboutMe || "Add an about me bio details by updating your profile!"}"
                 </p>
               </CardBody>
               <CardFooter>
                 <hr />
                 <div className="button-container">
                   <Row>
-                    <Col className="ml-auto" lg="3" md="6" xs="6">
+                    <Col className="ml-auto mr-auto" lg="6" md="6" xs="6">
                       <h5>
-                        12 <br />
-                        <small>Files</small>
-                      </h5>
-                    </Col>
-                    <Col className="ml-auto mr-auto" lg="4" md="6" xs="6">
-                      <h5>
-                        2GB <br />
-                        <small>Used</small>
-                      </h5>
-                    </Col>
-                    <Col className="mr-auto" lg="3">
-                      <h5>
-                        24,6$ <br />
-                        <small>Spent</small>
+                        LoCoML <br />
+                        <small>AutoML Workspace</small>
                       </h5>
                     </Col>
                   </Row>
                 </div>
               </CardFooter>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle tag="h4">Team Members</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <ul className="list-unstyled team-members">
-                  <li>
-                    <Row>
-                      <Col md="2" xs="2">
-                        <div className="avatar">
-                          <img
-                            alt="..."
-                            className="img-circle img-no-padding img-responsive"
-                            src={require("assets/img/faces/ayo-ogunseinde-2.jpg")}
-                          />
-                        </div>
-                      </Col>
-                      <Col md="7" xs="7">
-                        DJ Khaled <br />
-                        <span className="text-muted">
-                          <small>Offline</small>
-                        </span>
-                      </Col>
-                      <Col className="text-right" md="3" xs="3">
-                        <Button
-                          className="btn-round btn-icon"
-                          color="success"
-                          outline
-                          size="sm"
-                        >
-                          <i className="fa fa-envelope" />
-                        </Button>
-                      </Col>
-                    </Row>
-                  </li>
-                  <li>
-                    <Row>
-                      <Col md="2" xs="2">
-                        <div className="avatar">
-                          <img
-                            alt="..."
-                            className="img-circle img-no-padding img-responsive"
-                            src={require("assets/img/faces/joe-gardner-2.jpg")}
-                          />
-                        </div>
-                      </Col>
-                      <Col md="7" xs="7">
-                        Creative Tim <br />
-                        <span className="text-success">
-                          <small>Available</small>
-                        </span>
-                      </Col>
-                      <Col className="text-right" md="3" xs="3">
-                        <Button
-                          className="btn-round btn-icon"
-                          color="success"
-                          outline
-                          size="sm"
-                        >
-                          <i className="fa fa-envelope" />
-                        </Button>
-                      </Col>
-                    </Row>
-                  </li>
-                  <li>
-                    <Row>
-                      <Col md="2" xs="2">
-                        <div className="avatar">
-                          <img
-                            alt="..."
-                            className="img-circle img-no-padding img-responsive"
-                            src={require("assets/img/faces/clem-onojeghuo-2.jpg")}
-                          />
-                        </div>
-                      </Col>
-                      <Col className="col-ms-7" xs="7">
-                        Flume <br />
-                        <span className="text-danger">
-                          <small>Busy</small>
-                        </span>
-                      </Col>
-                      <Col className="text-right" md="3" xs="3">
-                        <Button
-                          className="btn-round btn-icon"
-                          color="success"
-                          outline
-                          size="sm"
-                        >
-                          <i className="fa fa-envelope" />
-                        </Button>
-                      </Col>
-                    </Row>
-                  </li>
-                </ul>
-              </CardBody>
             </Card>
           </Col>
           <Col md="8">
@@ -189,14 +184,17 @@ function User() {
                 <CardTitle tag="h5">Edit Profile</CardTitle>
               </CardHeader>
               <CardBody>
-                <Form>
+                {message && <Alert color="success">{message}</Alert>}
+                {error && <Alert color="danger">{error}</Alert>}
+                <Form onSubmit={handleSubmit}>
                   <Row>
                     <Col className="pr-1" md="5">
                       <FormGroup>
-                        <label>Company (disabled)</label>
+                        <label>Company</label>
                         <Input
-                          defaultValue="Creative Code Inc."
-                          disabled
+                          name="company"
+                          value={profileData.company}
+                          onChange={handleChange}
                           placeholder="Company"
                           type="text"
                         />
@@ -204,9 +202,10 @@ function User() {
                     </Col>
                     <Col className="px-1" md="3">
                       <FormGroup>
-                        <label>Username</label>
+                        <label>Username (disabled)</label>
                         <Input
-                          defaultValue="michael23"
+                          value={profileData.username}
+                          disabled
                           placeholder="Username"
                           type="text"
                         />
@@ -215,9 +214,14 @@ function User() {
                     <Col className="pl-1" md="4">
                       <FormGroup>
                         <label htmlFor="exampleInputEmail1">
-                          Email address
+                          Email address (disabled)
                         </label>
-                        <Input placeholder="Email" type="email" />
+                        <Input
+                          value={profileData.email}
+                          disabled
+                          placeholder="Email"
+                          type="email"
+                        />
                       </FormGroup>
                     </Col>
                   </Row>
@@ -226,8 +230,10 @@ function User() {
                       <FormGroup>
                         <label>First Name</label>
                         <Input
-                          defaultValue="Chet"
-                          placeholder="Company"
+                          name="firstName"
+                          value={profileData.firstName}
+                          onChange={handleChange}
+                          placeholder="First Name"
                           type="text"
                         />
                       </FormGroup>
@@ -236,7 +242,9 @@ function User() {
                       <FormGroup>
                         <label>Last Name</label>
                         <Input
-                          defaultValue="Faker"
+                          name="lastName"
+                          value={profileData.lastName}
+                          onChange={handleChange}
                           placeholder="Last Name"
                           type="text"
                         />
@@ -248,7 +256,9 @@ function User() {
                       <FormGroup>
                         <label>Address</label>
                         <Input
-                          defaultValue="Melbourne, Australia"
+                          name="address"
+                          value={profileData.address}
+                          onChange={handleChange}
                           placeholder="Home Address"
                           type="text"
                         />
@@ -260,7 +270,9 @@ function User() {
                       <FormGroup>
                         <label>City</label>
                         <Input
-                          defaultValue="Melbourne"
+                          name="city"
+                          value={profileData.city}
+                          onChange={handleChange}
                           placeholder="City"
                           type="text"
                         />
@@ -270,7 +282,9 @@ function User() {
                       <FormGroup>
                         <label>Country</label>
                         <Input
-                          defaultValue="Australia"
+                          name="country"
+                          value={profileData.country}
+                          onChange={handleChange}
                           placeholder="Country"
                           type="text"
                         />
@@ -279,7 +293,13 @@ function User() {
                     <Col className="pl-1" md="4">
                       <FormGroup>
                         <label>Postal Code</label>
-                        <Input placeholder="ZIP Code" type="number" />
+                        <Input
+                          name="postalCode"
+                          value={profileData.postalCode}
+                          onChange={handleChange}
+                          placeholder="ZIP Code"
+                          type="text"
+                        />
                       </FormGroup>
                     </Col>
                   </Row>
@@ -288,8 +308,11 @@ function User() {
                       <FormGroup>
                         <label>About Me</label>
                         <Input
+                          name="aboutMe"
+                          value={profileData.aboutMe}
+                          onChange={handleChange}
                           type="textarea"
-                          defaultValue="Oh so, your weak rhyme You doubt I'll bother, reading into it"
+                          placeholder="Enter details about yourself..."
                         />
                       </FormGroup>
                     </Col>

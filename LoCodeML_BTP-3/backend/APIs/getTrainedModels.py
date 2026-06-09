@@ -6,6 +6,7 @@ from mongoDB import db
 import os
 import bson.json_util as json_util
 from flask import send_file
+from auth_helper import get_user_from_request
 
 getTrainedModels = Blueprint("getTrainedModels", __name__)
 
@@ -18,8 +19,17 @@ def getTrainedModelListAll():
 def _safe_get_models_by_query(query=None):
     try:
         collection = db["Model_zoo"]
+        if query is None:
+            query = {}
+
+        username = get_user_from_request()
+        if username:
+            query['username'] = username
+        else:
+            query['username'] = {'$exists': False}
+
         trained_model_list = []
-        cursor = collection.find(query) if query is not None else collection.find()
+        cursor = collection.find(query)
         for model in cursor:
             try:
                 if "_id" in model:
@@ -68,7 +78,11 @@ def getTrainedModel(model_id):
     try:
         print(model_id)
         collection = db["Model_zoo"]
-        trained_model = collection.find_one({"model_id": model_id})
+        query = {"model_id": model_id}
+        username = get_user_from_request()
+        if username:
+            query["username"] = username
+        trained_model = collection.find_one(query)
         if not trained_model:
             return {"error": f"Model '{model_id}' not found"}, 404
 
@@ -140,9 +154,13 @@ def validate_model():
 def deleteModel(model_id):
     try:
         collection = db["Model_zoo"]
-        trained_model = collection.find_one({"model_id": model_id})
+        query = {"model_id": model_id}
+        username = get_user_from_request()
+        if username:
+            query["username"] = username
+        trained_model = collection.find_one(query)
         if not trained_model:
-            return {"error": f"Model '{model_id}' not found"}, 404
+            return {"error": f"Model '{model_id}' not found or unauthorized"}, 404
 
         # 1. Collect all model file paths to delete
         file_paths = []

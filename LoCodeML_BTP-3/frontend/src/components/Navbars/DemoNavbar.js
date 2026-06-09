@@ -55,6 +55,14 @@ function Header(props) {
   const dropdownToggle = (e) => {
     setDropdownOpen(!dropdownOpen);
   };
+  const [profileDropdownOpen, setProfileDropdownOpen] = React.useState(false);
+  const profileDropdownToggle = (e) => {
+    setProfileDropdownOpen(!profileDropdownOpen);
+  };
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
   const getBrand = () => {
     let brandName = "Default Brand";
     routes.map((prop, key) => {
@@ -163,14 +171,27 @@ function Header(props) {
                 <DropdownItem tag="a">Something else here</DropdownItem>
               </DropdownMenu>
             </Dropdown>
-            <NavItem>
-              <Link to="#pablo" className="nav-link btn-rotate">
+            <Dropdown
+              nav
+              isOpen={profileDropdownOpen}
+              toggle={(e) => profileDropdownToggle(e)}
+            >
+              <DropdownToggle caret nav className="nav-link btn-rotate">
                 <i className="nc-icon nc-settings-gear-65" />
                 <p>
                   <span className="d-lg-none d-md-block">Account</span>
                 </p>
-              </Link>
-            </NavItem>
+              </DropdownToggle>
+              <DropdownMenu right>
+                <DropdownItem tag={Link} to="/user-profile">
+                  <i className="nc-icon nc-single-02 mr-2" /> My Profile
+                </DropdownItem>
+                <DropdownItem divider />
+                <DropdownItem onClick={handleLogout} style={{ color: "#f5365c" }}>
+                  <i className="nc-icon nc-button-power mr-2" /> Logout
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           </Nav>
         </Collapse>
       </Container>

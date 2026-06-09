@@ -4,6 +4,7 @@ import os
 sys.path.append(os.getenv('PROJECT_PATH'))
 from functions.LLM_API import LLM
 from mongoDB import db
+from auth_helper import get_user_from_request
 import re
 import datetime
 from APIs.generatePipeline.pipelineParameters import PipelineParameters
@@ -45,7 +46,8 @@ class ProcessQuery:
         try:
             print("[DEBUG] Fetching datasets from DB", file=sys.stderr)
             collection = db["Datasets"]
-            query = {}
+            username = get_user_from_request()
+            query = {'username': username} if username else {'username': {'$exists': False}}
             datasets = collection.find(query)
             available_datasets = [dataset for dataset in datasets]
             self.dataset_name_to_id = {}
@@ -67,6 +69,9 @@ class ProcessQuery:
             collection = db["Pipeline_Requests"]
             document = dict(save_data)
             document["updated_at"] = datetime.datetime.utcnow()
+            username = get_user_from_request()
+            if username:
+                document["username"] = username
             collection.insert_one(document)
             return True
         except Exception as e:

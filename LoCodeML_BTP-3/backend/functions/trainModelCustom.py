@@ -155,11 +155,15 @@ def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target
 
     collection = db['Model_zoo']
 
+    dataset_info = db['Datasets'].find_one({'dataset_id': dataset_id})
+    username = dataset_info.get('username') if dataset_info else None
+
     if isUpdate.lower() != 'true':
         details = {
             'time': datetime.datetime.now(),
             'model_id': new_model_id,
             'model_name': model_name,
+            'username': username,
             'training_mode': 'Custom',
             'estimator_type': best_model_name,
             'metric_mode': metric_mode,

@@ -19,6 +19,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import axios from "axios";
 
 import "bootstrap/dist/css/bootstrap.css";
 import "assets/scss/paper-dashboard.scss?v=1.3.0";
@@ -26,16 +27,79 @@ import "assets/demo/demo.css";
 import "perfect-scrollbar/css/perfect-scrollbar.css";
 
 import AdminLayout from "layouts/Admin.js";
-import ModelDetails from "views/ModelDetails.js";
+import Login from "views/Auth/Login.js";
+import Register from "views/Auth/Register.js";
+
+// Setup global Axios request interceptor to attach authentication token and user ID
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.username) {
+          config.headers["X-User-Id"] = user.username;
+        }
+      } catch (e) {
+        console.error("Error parsing user from localStorage", e);
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
   <BrowserRouter>
     <Routes>
-      <Route path="/*" element={<AdminLayout />}>
-        {/* <Route path="models/:model_name" element={<ModelDetails />} /> */}
-      </Route>
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </BrowserRouter>
