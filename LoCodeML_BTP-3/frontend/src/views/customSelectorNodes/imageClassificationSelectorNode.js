@@ -15,6 +15,63 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const isModelSelected = !!(data?.model_id || data?.entity);
 
+  const [recommendation, setRecommendation] = React.useState(null);
+  const [isFetchingRec, setIsFetchingRec] = React.useState(false);
+
+  const fetchRecommendation = async (modelId) => {
+    if (!modelId) {
+      setRecommendation(null);
+      return;
+    }
+    setIsFetchingRec(true);
+    try {
+      const apiBase = process.env.REACT_APP_API_BASE_URL || "";
+      const response = await axios.get(`${apiBase}/getRecommendation?model_id=${modelId}`);
+      if (response.data && response.data.success && response.data.has_recommendation) {
+        setRecommendation(response.data.recommendation);
+      } else {
+        setRecommendation(null);
+      }
+    } catch (error) {
+      console.error("Error fetching recommendation:", error);
+      setRecommendation(null);
+    } finally {
+      setIsFetchingRec(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (data?.model_id) {
+      fetchRecommendation(data.model_id);
+    } else {
+      setRecommendation(null);
+    }
+  }, [data?.model_id]);
+
+  const handleUseRecommendation = () => {
+    if (!recommendation) return;
+    const recModelObj = {
+      model_id: recommendation.model_id,
+      model_name: recommendation.model_name,
+      estimator_type: recommendation.estimator_type,
+      objective: recommendation.objective,
+      target_column: recommendation.target_column,
+      evaluation_metrics: [
+        { metric_name: recommendation.metric_name, metric_value: recommendation.metric_value }
+      ]
+    };
+    setImageClassificationModels(prev => ({
+      ...prev,
+      [recommendation.model_id]: recModelObj
+    }));
+    data.entity = recModelObj;
+    data.model_id = recommendation.model_id;
+    if (data.onModelBind) {
+      data.onModelBind(id, recModelObj);
+    }
+    handleCloseModal();
+  };
+
   const parseTrainedModels = (responseData) => {
     const normalizedResponse = typeof responseData === "string"
       ? (() => {
@@ -147,6 +204,82 @@ export default memo(({ id, data, isConnectable, nodeType }) => {
             onChange={handleChange}
             placeholder="Select a model"
           />
+          {recommendation && (
+            <div style={{
+              marginTop: '16px',
+              padding: '16px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+              border: '1px solid #dcdcdc',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+              transition: 'all 0.3s ease',
+              fontFamily: '"Outfit", "Inter", sans-serif',
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '20px', marginRight: '8px' }}>💡</span>
+                <h5 style={{ margin: 0, fontWeight: 600, color: '#333', fontSize: '15px' }}>AI Model Recommendation</h5>
+                <span style={{
+                  marginLeft: 'auto',
+                  background: '#4caf50',
+                  color: '#fff',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}>
+                  Better Performance
+                </span>
+              </div>
+              
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+                Another user, <strong>{recommendation.user.name}</strong> ({recommendation.user.company}), 
+                used the model <strong>{recommendation.model_name}</strong> ({recommendation.estimator_type}) 
+                for a similar use case (target: <code>{recommendation.target_column}</code>) and achieved 
+                an outstanding <strong>{(recommendation.metric_value * 100).toFixed(2)}% {recommendation.metric_name}</strong>.
+              </p>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.6)',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                fontSize: '12px'
+              }}>
+                <div>
+                  <span>Your model: <strong>{(recommendation.chosen_metric_value * 100).toFixed(2)}%</strong></span>
+                </div>
+                <div>
+                  <span>Recommended: <strong>{(recommendation.metric_value * 100).toFixed(2)}%</strong></span>
+                </div>
+                <div style={{ color: recommendation.difference >= 0 ? '#2e7d32' : '#c62828', fontWeight: 'bold' }}>
+                  {recommendation.difference >= 0 ? '+' : ''}{(recommendation.difference * 100).toFixed(2)}% Improvement
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  type="primary" 
+                  onClick={handleUseRecommendation}
+                  style={{
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    border: 0,
+                    color: 'white',
+                    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    height: '32px'
+                  }}
+                >
+                  Use Recommended Model
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
