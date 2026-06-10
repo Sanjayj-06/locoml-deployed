@@ -44,7 +44,6 @@ var routes = [
     path: "/user-profile",
     name: "User Profile",
     showInSidebar: true,
-    icon: "nc-icon nc-single-02",
     component: <User />,
   },
   {

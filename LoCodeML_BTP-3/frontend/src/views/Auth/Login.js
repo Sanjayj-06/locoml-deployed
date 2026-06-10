@@ -15,6 +15,8 @@ import {
   Col,
   Alert
 } from "reactstrap";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 function Login() {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ function Login() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
@@ -67,53 +70,76 @@ function Login() {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #0f0c1b 0%, #201a30 50%, #0f0c1b 100%)",
+        background: "linear-gradient(135deg, #f4f3ef 0%, #e9e7e1 100%)",
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "'Outfit', 'Helvetica Neue', Arial, sans-serif",
-        color: "#ffffff",
+        color: "#2c2c2c",
         overflowX: "hidden"
       }}
     >
+      <style>{`
+        /* Load Aalto OpenType Display Font */
+        @font-face {
+          font-family: 'Aalto Display-Personal-use';
+          src: url('https://db.onlinewebfonts.com/t/f6ec291f284d1c8ba5a1706ba94e4a9d.woff2') format('woff2'),
+               url('https://db.onlinewebfonts.com/t/f6ec291f284d1c8ba5a1706ba94e4a9d.woff') format('woff'),
+               url('https://db.onlinewebfonts.com/t/f6ec291f284d1c8ba5a1706ba94e4a9d.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+
+        /* Autofill overrides to match input fields */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+          -webkit-text-fill-color: #2c2c2c !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+        
+        /* Focus state helper */
+        .custom-input-group {
+          border: 1px solid rgba(0, 0, 0, 0.15) !important;
+          background: #ffffff !important;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .custom-input-group:focus-within {
+          border-color: #51bcda !important;
+          box-shadow: 0 0 0 3px rgba(81, 188, 218, 0.15) !important;
+        }
+      `}</style>
+
       <Container>
         <Row className="justify-content-center">
           <Col lg="5" md="7">
             <Card
               className="shadow border-0"
               style={{
-                background: "rgba(255, 255, 255, 0.03)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "20px",
+                background: "#ffffff",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
+                borderRadius: "16px",
                 padding: "20px 10px",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.4)"
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.05)"
               }}
             >
               <CardBody className="px-lg-5 py-lg-5">
                 <div className="text-center mb-4">
-                  <div
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      background: "linear-gradient(45deg, #11cdef, #1171ef)",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 15px auto",
-                      boxShadow: "0 4px 15px rgba(17, 205, 239, 0.3)",
-                      fontSize: "24px"
-                    }}
-                  >
-                    <i className="nc-icon nc-sound-wave" />
-                  </div>
-                  <h2 style={{ fontSize: "28px", fontWeight: "700", letterSpacing: "0.5px", margin: "0" }}>
+                  <h2 style={{ 
+                    fontSize: "56px", 
+                    fontWeight: "normal", 
+                    fontFamily: "'Aalto Display-Personal-use', sans-serif",
+                    margin: "0", 
+                    color: "#2c2c2c",
+                    lineHeight: "1.1"
+                  }}>
                     LoCoML
                   </h2>
-                  <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "14px", marginTop: "5px" }}>
+                  <p style={{ color: "#66615b", fontSize: "14px", marginTop: "10px" }}>
                     Sign in to your private AutoML workspace
                   </p>
                 </div>
@@ -122,9 +148,9 @@ function Login() {
                   <Alert
                     color="danger"
                     style={{
-                      background: "rgba(245, 54, 92, 0.15)",
-                      border: "1px solid rgba(245, 54, 92, 0.3)",
-                      color: "#f5365c",
+                      background: "rgba(239, 129, 87, 0.1)",
+                      border: "1px solid rgba(239, 129, 87, 0.25)",
+                      color: "#ef8157",
                       borderRadius: "10px",
                       fontSize: "14px"
                     }}
@@ -135,27 +161,10 @@ function Login() {
 
                 <Form role="form" onSubmit={handleSubmit}>
                   <FormGroup className="mb-3">
-                    <label style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(255, 255, 255, 0.5)", fontWeight: "600", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "#66615b", fontWeight: "600", marginBottom: "8px" }}>
                       Username or Email
                     </label>
-                    <InputGroup
-                      style={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        border: "1px solid rgba(255, 255, 255, 0.1)",
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                        transition: "all 0.3s"
-                      }}
-                    >
-                      <InputGroupText
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "rgba(255, 255, 255, 0.4)"
-                        }}
-                      >
-                        <i className="nc-icon nc-single-02" />
-                      </InputGroupText>
+                    <InputGroup className="custom-input-group" style={{ borderRadius: "10px", overflow: "hidden" }}>
                       <Input
                         placeholder="Enter username or email"
                         type="text"
@@ -166,37 +175,21 @@ function Login() {
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#ffffff",
-                          height: "45px"
+                          color: "#2c2c2c",
+                          height: "45px",
+                          paddingLeft: "15px"
                         }}
                       />
                     </InputGroup>
                   </FormGroup>
                   <FormGroup className="mb-4">
-                    <label style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "rgba(255, 255, 255, 0.5)", fontWeight: "600", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "#66615b", fontWeight: "600", marginBottom: "8px" }}>
                       Password
                     </label>
-                    <InputGroup
-                      style={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        border: "1px solid rgba(255, 255, 255, 0.1)",
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                        transition: "all 0.3s"
-                      }}
-                    >
-                      <InputGroupText
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "rgba(255, 255, 255, 0.4)"
-                        }}
-                      >
-                        <i className="nc-icon nc-key-25" />
-                      </InputGroupText>
+                    <InputGroup className="custom-input-group" style={{ borderRadius: "10px", overflow: "hidden" }}>
                       <Input
                         placeholder="Enter password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
@@ -205,10 +198,29 @@ function Login() {
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#ffffff",
-                          height: "45px"
+                          color: "#2c2c2c",
+                          height: "45px",
+                          paddingLeft: "15px"
                         }}
                       />
+                      <InputGroupText
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#66615b",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          paddingRight: "15px"
+                        }}
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <VisibilityOff style={{ fontSize: "20px" }} />
+                        ) : (
+                          <Visibility style={{ fontSize: "20px" }} />
+                        )}
+                      </InputGroupText>
                     </InputGroup>
                   </FormGroup>
                   <div className="text-center">
@@ -220,20 +232,25 @@ function Login() {
                         width: "100%",
                         padding: "12px",
                         fontSize: "16px",
-                        fontWeight: "600",
+                        fontWeight: "700",
                         borderRadius: "10px",
-                        background: "linear-gradient(45deg, #11cdef, #1171ef)",
-                        border: "none",
-                        boxShadow: "0 4px 15px rgba(17, 205, 239, 0.2)",
-                        transition: "transform 0.2s, box-shadow 0.2s"
+                        background: "transparent",
+                        border: "2px solid #51bcda",
+                        color: "#51bcda",
+                        boxShadow: "none",
+                        transition: "all 0.2s ease-in-out"
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                        e.currentTarget.style.boxShadow = "0 6px 20px rgba(17, 205, 239, 0.3)";
+                        e.currentTarget.style.background = "#51bcda";
+                        e.currentTarget.style.color = "#ffffff";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 4px 15px rgba(81, 188, 218, 0.2)";
                       }}
                       onMouseOut={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "#51bcda";
                         e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 15px rgba(17, 205, 239, 0.2)";
+                        e.currentTarget.style.boxShadow = "none";
                       }}
                     >
                       {loading ? "Signing In..." : "Sign In"}
@@ -242,17 +259,17 @@ function Login() {
                 </Form>
 
                 <div className="text-center mt-4" style={{ fontSize: "14px" }}>
-                  <span style={{ color: "rgba(255, 255, 255, 0.5)" }}>Don't have an account? </span>
+                  <span style={{ color: "#66615b" }}>Don't have an account? </span>
                   <Link
                     to="/register"
                     style={{
-                      color: "#11cdef",
+                      color: "#51bcda",
                       fontWeight: "600",
                       textDecoration: "none",
                       transition: "color 0.2s"
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.color = "#1171ef"}
-                    onMouseOut={(e) => e.currentTarget.style.color = "#11cdef"}
+                    onMouseOver={(e) => e.currentTarget.style.color = "#2ba9cd"}
+                    onMouseOut={(e) => e.currentTarget.style.color = "#51bcda"}
                   >
                     Register
                   </Link>

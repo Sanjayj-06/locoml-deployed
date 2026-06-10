@@ -60,7 +60,8 @@ function Header(props) {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     window.location.href = "/login";
   };
   const getBrand = () => {

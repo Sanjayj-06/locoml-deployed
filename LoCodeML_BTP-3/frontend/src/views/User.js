@@ -51,8 +51,29 @@ function User() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [avatarSrc, setAvatarSrc] = useState("");
 
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    const savedPic = localStorage.getItem("user_profile_pic");
+    if (savedPic) {
+      setAvatarSrc(savedPic);
+    }
+  }, []);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        localStorage.setItem("user_profile_pic", base64String);
+        setAvatarSrc(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -149,7 +170,17 @@ function User() {
                     <img
                       alt="..."
                       className="avatar border-gray"
-                      src={require("assets/img/mike.jpg")}
+                      src={avatarSrc || require("assets/img/mike.jpg")}
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const inputEl = document.getElementById("avatar-upload");
+                        if (inputEl) {
+                          inputEl.click();
+                        }
+                      }}
+                      title="Click to change profile picture"
                     />
                     <h5 className="title">
                       {profileData.firstName || profileData.lastName
@@ -157,6 +188,13 @@ function User() {
                         : profileData.username}
                     </h5>
                   </a>
+                  <input
+                    type="file"
+                    id="avatar-upload"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleAvatarChange}
+                  />
                   <p className="description">@{profileData.username}</p>
                 </div>
                 <p className="description text-center">
