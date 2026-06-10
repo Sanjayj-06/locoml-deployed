@@ -93,8 +93,17 @@ const buildEvaluationSignature = (nodes = [], edges = []) => JSON.stringify({
     name: node?.data?.name || null,
     modelId: node?.data?.model_id || node?.data?.entity?.model_id || null,
     modelName: node?.data?.model_name || node?.data?.entity?.model_name || null,
-    entityId: typeof node?.data?.entity === 'string' ? node.data.entity : node?.data?.entity?.model_id || node?.data?.entity?.id || null,
+    entityId: typeof node?.data?.entity === 'string' 
+      ? node.data.entity 
+      : node?.data?.entity?.model_id || 
+        node?.data?.entity?.id || 
+        node?.data?.entity?.dataset_id || 
+        node?.data?.dataset_id || 
+        node?.data?.entity?.filename || 
+        (node?.data?.entity?.manual_inputs ? JSON.stringify(node.data.entity.manual_inputs) : null) || 
+        null,
     preprocessingType: node?.data?.preprocessingType || null,
+    scalerType: node?.data?.scalerType || null,
   })),
   edges: edges.map((edge) => ({
     id: edge.id,

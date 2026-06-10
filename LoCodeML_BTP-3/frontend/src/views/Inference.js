@@ -209,9 +209,26 @@ function Inference() {
     const [selectedModel, setSelectedModel] = useState(null);
     const [validationResult, setValidationResult] = useState({ valid: true, issues: [] });
     const [resolverStatus, setResolverStatus] = useState("IDLE");
+    const lastValidatedSignature = React.useRef("");
     const [resolverMessages, setResolverMessages] = useState([]);
     const [resolverSelectedIssue, setResolverSelectedIssue] = useState(null);
     const [resolverSuggestedActions, setResolverSuggestedActions] = useState([]);
+
+    const nodesRef = React.useRef(nodes);
+    const edgesRef = React.useRef(edges);
+    const reactFlowInstanceRef = React.useRef(reactFlowInstance);
+
+    React.useEffect(() => {
+        nodesRef.current = nodes;
+    }, [nodes]);
+
+    React.useEffect(() => {
+        edgesRef.current = edges;
+    }, [edges]);
+
+    React.useEffect(() => {
+        reactFlowInstanceRef.current = reactFlowInstance;
+    }, [reactFlowInstance]);
 
     React.useEffect(() => {
         console.log("[Resolver Debug] Inference Page mounted");
@@ -241,8 +258,8 @@ function Inference() {
 
     function handleModelBind(nodeId, model) {
         if (!model) return;
-        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
-        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+        const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current;
 
         const updatedNodes = currentNodes.map(node => {
             if (node.id === nodeId) {
@@ -278,8 +295,8 @@ function Inference() {
 
     function handleDatasetBind(nodeId, datasetInfo) {
         if (!datasetInfo) return;
-        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
-        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+        const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current;
 
         // Clear task, validation, and resolver states upon dataset change
         setValidationResult({ valid: true, issues: [] });
@@ -334,8 +351,8 @@ function Inference() {
 
     function handlePreprocessBind(nodeId, preprocessInfo) {
         if (!preprocessInfo) return;
-        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
-        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+        const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current;
 
         const updatedNodes = currentNodes.map(node => {
             if (node.id === nodeId) {
@@ -358,12 +375,26 @@ function Inference() {
         runLocalValidation(updatedNodes, currentEdges);
     }
 
-    const runLocalValidation = async (currentNodes, currentEdges) => {
+    const runLocalValidation = async (currentNodes, currentEdges, force = false) => {
+        const activeNodes = currentNodes !== undefined ? currentNodes : (reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current);
+        const activeEdges = currentEdges !== undefined ? currentEdges : (reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current);
+
+        if (!activeNodes || activeNodes.length === 0) {
+            setValidationResult({ valid: true, issues: [] });
+            setResolverStatus("IDLE");
+            lastValidatedSignature.current = "";
+            return true;
+        }
+
+        const signature = buildEvaluationSignature(activeNodes, activeEdges);
+        if (!force && signature === lastValidatedSignature.current) {
+            console.log("[Resolver Debug] Skipping validation backend request: signature is identical");
+            return validationResult ? validationResult.valid : true;
+        }
+        lastValidatedSignature.current = signature;
+
         // Clear cached validation issues before revalidation to prevent stale rendering
         setValidationResult({ valid: true, issues: [] });
-
-        const activeNodes = currentNodes || (reactFlowInstance ? reactFlowInstance.getNodes() : nodes);
-        const activeEdges = currentEdges || (reactFlowInstance ? reactFlowInstance.getEdges() : edges);
 
         const inpNode = activeNodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
         const dsInfo = inpNode?.data?.entity;
@@ -469,7 +500,7 @@ function Inference() {
         setResolverStatus("FIXING");
         switch (action.type) {
             case "replace_node": {
-                const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
+                const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
                 const targetNode = currentNodes.find(n => n.id === action.node_id);
                 if (targetNode) {
                     console.log("[Resolver Debug] Old Node Payload State:", targetNode);
@@ -627,7 +658,7 @@ function Inference() {
 
                 setNodes(updatedNodes);
                 setValidationResult({ valid: true, issues: [] });
-                await runLocalValidation(updatedNodes, reactFlowInstance ? reactFlowInstance.getEdges() : edges);
+                await runLocalValidation(updatedNodes, reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current);
                 break;
             }
             case "delete_node":
@@ -685,8 +716,8 @@ function Inference() {
                 break;
             }
             case "auto_select_model": {
-                const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodes;
-                const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edges;
+                const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
+                const currentEdges = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current;
                 const modelNode = currentNodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
                 if (!modelNode) break;
 
@@ -769,11 +800,354 @@ function Inference() {
         }
     }
 
+    async function applyGraphActionsBatch(actions) {
+        setResolverStatus("FIXING");
+        let tempNodes = [...nodesRef.current];
+        let tempEdges = [...edgesRef.current];
+
+        let datasetsCache = null;
+        const modelsCache = {}; // objective -> models list
+
+        const getDatasetsCached = async () => {
+            if (!datasetsCache) {
+                try {
+                    const res = await axios.get("http://localhost:5000/getDatasets");
+                    datasetsCache = res.data?.dataset_list || [];
+                } catch (err) {
+                    console.error("Failed to fetch datasets during auto-repair:", err);
+                    datasetsCache = [];
+                }
+            }
+            return datasetsCache;
+        };
+
+        const getTrainedModelsCached = async (objective) => {
+            if (!modelsCache[objective]) {
+                try {
+                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
+                    const responseData = res.data?.trained_models || [];
+                    modelsCache[objective] = responseData.map(modelStr => {
+                        try {
+                            return typeof modelStr === 'string' ? JSON.parse(modelStr.replace(/Infinity/g, "1e1000")) : modelStr;
+                        } catch (e) {
+                            return null;
+                        }
+                    }).filter(Boolean);
+                } catch (err) {
+                    console.error("Failed to fetch trained models during auto-repair:", err);
+                    modelsCache[objective] = [];
+                }
+            }
+            return modelsCache[objective];
+        };
+
+        for (const action of actions) {
+            switch (action.type) {
+                case "replace_node": {
+                    const targetNode = tempNodes.find(n => n.id === action.node_id);
+                    const replacementLower = String(action.replacement || "").toLowerCase();
+                    let updatedType = targetNode ? targetNode.type : "regression";
+                    let updatedStyle = targetNode ? { ...targetNode.style } : {};
+                    let objective = "regression";
+
+                    if (replacementLower.includes("regression")) {
+                        updatedType = "regression";
+                        updatedStyle.backgroundColor = "lightgrey";
+                        objective = "regression";
+                    } else if (replacementLower.includes("classification")) {
+                        updatedType = "classification";
+                        updatedStyle.backgroundColor = "#b0f2b4";
+                        objective = "classification";
+                    } else if (replacementLower.includes("sentiment")) {
+                        updatedType = "sentiment";
+                        updatedStyle.backgroundColor = "#ffef9f";
+                        objective = "sentiment";
+                    } else if (replacementLower.includes("huggingface")) {
+                        updatedType = "huggingface";
+                        updatedStyle.backgroundColor = "#cbf2f2";
+                        objective = "sentiment";
+                    } else if (replacementLower.includes("image")) {
+                        updatedType = "imageclassification";
+                        updatedStyle.backgroundColor = "#f2b0b0";
+                        objective = "imageclassification";
+                    }
+
+                    let boundModelData = null;
+                    const trainedModels = await getTrainedModelsCached(objective);
+                    const inpNode = tempNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+                    const dsInfo = inpNode?.data?.entity;
+
+                    let datasetColumns = [];
+                    if (dsInfo) {
+                        if (Array.isArray(dsInfo.columns)) {
+                            datasetColumns = dsInfo.columns;
+                        } else if (dsInfo.manual_input_order) {
+                            datasetColumns = dsInfo.manual_input_order;
+                        } else if (dsInfo.manual_inputs) {
+                            datasetColumns = Object.keys(dsInfo.manual_inputs);
+                        } else if (dsInfo.features) {
+                            datasetColumns = dsInfo.features;
+                        }
+                    }
+
+                    if ((!datasetColumns || datasetColumns.length === 0) && validationResult?.dataset_meta?.columns) {
+                        datasetColumns = validationResult.dataset_meta.columns;
+                    }
+
+                    const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
+
+                    let compatibleModel = null;
+                    for (const model of trainedModels) {
+                        const modelFeatures = model.training_columns || model.input_schema || [];
+                        const normModelFeatures = modelFeatures.map(f => {
+                            const colName = typeof f === 'object' ? (f.column_name || f.name || "") : String(f);
+                            return colName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        });
+
+                        const allFeaturesExist = normModelFeatures.every(f => normDatasetCols.has(f));
+                        if (allFeaturesExist) {
+                            compatibleModel = model;
+                            break;
+                        }
+                    }
+
+                    if (!compatibleModel && trainedModels.length > 0) {
+                        compatibleModel = trainedModels[0];
+                    }
+
+                    if (compatibleModel) {
+                        boundModelData = {
+                            model_id: compatibleModel.model_id,
+                            estimator: compatibleModel.estimator,
+                            model_name: compatibleModel.model_name || compatibleModel.model_id,
+                            artifact_path: compatibleModel.saved_model_path || compatibleModel.artifact_path,
+                            task_type: compatibleModel.task_type || compatibleModel.objective?.toUpperCase(),
+                            training_columns: compatibleModel.training_columns,
+                            target_column: compatibleModel.target_column,
+                            bound_model: true,
+                            entity: compatibleModel
+                        };
+                    }
+
+                    if (!boundModelData) {
+                        const inferredTarget = "House_Price";
+                        boundModelData = {
+                            model_id: "default_" + objective + "_model",
+                            estimator: objective === "regression" ? "LinearRegression" : "LogisticRegression",
+                            model_name: "Default " + objective.charAt(0).toUpperCase() + objective.slice(1) + " Model",
+                            artifact_path: null,
+                            task_type: objective.toUpperCase(),
+                            training_columns: [],
+                            target_column: inferredTarget,
+                            bound_model: false,
+                            entity: {
+                                model_id: "default_" + objective + "_model",
+                                task_type: objective.toUpperCase(),
+                                target_column: inferredTarget
+                            }
+                        };
+                    }
+
+                    tempNodes = tempNodes.map((node) => {
+                        if (node.id === action.node_id) {
+                            return {
+                                ...node,
+                                type: updatedType,
+                                style: updatedStyle,
+                                model_id: boundModelData.model_id,
+                                estimator: boundModelData.estimator,
+                                model_name: boundModelData.model_name,
+                                artifact_path: boundModelData.artifact_path,
+                                task_type: boundModelData.task_type,
+                                training_columns: boundModelData.training_columns,
+                                target_column: boundModelData.target_column,
+                                bound_model: boundModelData.bound_model,
+                                data: {
+                                    ...node.data,
+                                    label: action.replacement,
+                                    model_id: boundModelData.model_id,
+                                    estimator: boundModelData.estimator,
+                                    model_name: boundModelData.model_name,
+                                    artifact_path: boundModelData.artifact_path,
+                                    task_type: boundModelData.task_type,
+                                    training_columns: boundModelData.training_columns,
+                                    target_column: boundModelData.target_column,
+                                    bound_model: boundModelData.bound_model,
+                                    entity: boundModelData.entity
+                                }
+                            };
+                        }
+                        return node;
+                    });
+                    break;
+                }
+                case "delete_node": {
+                    const id = action.node_id;
+                    tempNodes = tempNodes.filter((node) => node.id !== id);
+                    tempEdges = tempEdges.filter((edge) => edge.source !== id && edge.target !== id);
+                    break;
+                }
+                case "add_node": {
+                    const color = nodeTypeColorMap[action.node_type] || "lightgrey";
+                    const newNode = {
+                        id: action.node_id || getID(),
+                        position: { x: 300, y: 300 },
+                        data: {
+                            label: action.label,
+                            entity: action.label,
+                            selectedModel: selectedModel,
+                            modelParameters: modelParameters,
+                            onDelete: deleteNode,
+                            onNameChange: handleNameChange,
+                            onModelSelect: handleModelSelection,
+                            onModelBind: handleModelBind,
+                            onDatasetBind: handleDatasetBind,
+                            onPreprocessBind: handlePreprocessBind
+                        },
+                        style: { backgroundColor: color },
+                        type: action.node_type
+                    };
+                    tempNodes = tempNodes.concat(newNode);
+                    break;
+                }
+                case "add_edge": {
+                    const newEdge = {
+                        id: `dndedge_${action.source}_${action.target}`,
+                        source: action.source,
+                        target: action.target,
+                        type: "smoothstep"
+                    };
+                    if (!tempEdges.some(e => e.source === newEdge.source && e.target === newEdge.target)) {
+                        tempEdges = tempEdges.concat(newEdge);
+                    }
+                    break;
+                }
+                case "delete_edge": {
+                    tempEdges = tempEdges.filter(
+                        (e) => !(e.source === action.source && e.target === action.target)
+                    );
+                    break;
+                }
+                case "bind_dataset": {
+                    const datasets = await getDatasetsCached();
+                    if (datasets.length > 0) {
+                        const firstDs = datasets[0];
+                        tempNodes = tempNodes.map(node => {
+                            if (node.id === action.node_id) {
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        entity: firstDs,
+                                        dataset_id: firstDs.dataset_id || firstDs.id || firstDs,
+                                        dataset_type: firstDs.dataset_type || 'tabular'
+                                    }
+                                };
+                            }
+                            return node;
+                        });
+                    }
+                    break;
+                }
+                case "auto_select_model": {
+                    const modelNode = tempNodes.find(n => ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface'].includes(n.type));
+                    if (!modelNode) break;
+
+                    let objective = "classification";
+                    if (modelNode.type === 'regression') objective = "regression";
+                    else if (modelNode.type === 'sentiment' || modelNode.type === 'huggingface') objective = "sentiment";
+                    else if (modelNode.type === 'imageclassification') objective = "imageclassification";
+
+                    const trainedModels = await getTrainedModelsCached(objective);
+                    const inpNode = tempNodes.find(n => n.type === 'inputData' || n.data?.label === 'Inputs');
+                    const dsInfo = inpNode?.data?.entity;
+
+                    let datasetColumns = [];
+                    if (dsInfo) {
+                        if (Array.isArray(dsInfo.columns)) {
+                            datasetColumns = dsInfo.columns;
+                        } else if (dsInfo.manual_input_order) {
+                            datasetColumns = dsInfo.manual_input_order;
+                        } else if (dsInfo.manual_inputs) {
+                            datasetColumns = Object.keys(dsInfo.manual_inputs);
+                        } else if (dsInfo.features) {
+                            datasetColumns = dsInfo.features;
+                        }
+                    }
+
+                    if ((!datasetColumns || datasetColumns.length === 0) && validationResult?.dataset_meta?.columns) {
+                        datasetColumns = validationResult.dataset_meta.columns;
+                    }
+
+                    const normDatasetCols = new Set(datasetColumns.map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, '')));
+
+                    let compatibleModel = null;
+                    for (const model of trainedModels) {
+                        const modelFeatures = model.training_columns || model.input_schema || [];
+                        const normModelFeatures = modelFeatures.map(f => {
+                            const colName = typeof f === 'object' ? (f.column_name || f.name || "") : String(f);
+                            return colName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        });
+
+                        const allFeaturesExist = normModelFeatures.every(f => normDatasetCols.has(f));
+                        if (allFeaturesExist) {
+                            compatibleModel = model;
+                            break;
+                        }
+                    }
+
+                    if (!compatibleModel && trainedModels.length > 0) {
+                        if (objective === 'imageclassification' || objective === 'sentiment') {
+                            compatibleModel = trainedModels[0];
+                        }
+                    }
+
+                    if (compatibleModel) {
+                        tempNodes = tempNodes.map(node => {
+                            if (node.id === modelNode.id) {
+                                return {
+                                    ...node,
+                                    model_id: compatibleModel.model_id,
+                                    estimator: compatibleModel.estimator_type || compatibleModel.estimator,
+                                    model_name: compatibleModel.model_name,
+                                    artifact_path: compatibleModel.saved_model_path,
+                                    task_type: compatibleModel.objective || compatibleModel.task_type,
+                                    training_columns: compatibleModel.training_columns || compatibleModel.input_schema,
+                                    target_column: compatibleModel.target_column,
+                                    bound_model: true,
+                                    data: {
+                                        ...node.data,
+                                        entity: compatibleModel,
+                                        model_id: compatibleModel.model_id,
+                                        task_type: compatibleModel.objective || compatibleModel.task_type,
+                                        training_columns: compatibleModel.training_columns || compatibleModel.input_schema,
+                                        target_column: compatibleModel.target_column,
+                                        bound_model: true,
+                                    }
+                                };
+                            }
+                            return node;
+                        });
+                    }
+                    break;
+                }
+                default:
+                    console.warn("Unknown graph mutation type in batch:", action.type);
+                    break;
+            }
+        }
+
+        // Apply final state updates
+        setNodes(tempNodes);
+        setEdges(tempEdges);
+
+        // Run validation ONCE at the end, forcing it to ensure signature cache is bypassed/updated with this specific run
+        await runLocalValidation(tempNodes, tempEdges, true);
+    }
+
     // Auto-revalidation loop: runs revalidation in real-time upon any graph structure changes
     React.useEffect(() => {
-        if (nodes.length > 0) {
-            runLocalValidation();
-        }
+        runLocalValidation(nodes, edges);
     }, [nodes, edges]);
 
     React.useEffect(() => {
@@ -956,7 +1330,13 @@ function Inference() {
 
 
     const onConnect = useCallback(
-        (params) => setEdges((eds) => addEdge(params, eds)),
+        (params) => {
+            setEdges((eds) => {
+                const nextEdges = addEdge(params, eds);
+                setTimeout(() => runLocalValidation(nodesRef.current, nextEdges), 0);
+                return nextEdges;
+            });
+        },
         [setEdges],
     )
 
@@ -1057,12 +1437,23 @@ function Inference() {
             type: nodeType
         };
 
-        setNodes((nds) => nds.concat(newNode));
+        setNodes((nds) => {
+            const nextNodes = nds.concat(newNode);
+            setTimeout(() => runLocalValidation(nextNodes, edgesRef.current), 0);
+            return nextNodes;
+        });
     };
 
     function deleteNode(id) {
-        setNodes((nds) => nds.filter((node) => node.id !== id));
-        setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
+        setNodes((nds) => {
+            const nextNodes = nds.filter((node) => node.id !== id);
+            setEdges((eds) => {
+                const nextEdges = eds.filter((edge) => edge.source !== id && edge.target !== id);
+                setTimeout(() => runLocalValidation(nextNodes, nextEdges), 0);
+                return nextEdges;
+            });
+            return nextNodes;
+        });
     }
 
     function handleNameChange(id, newName) {
@@ -1088,7 +1479,11 @@ function Inference() {
     }, [setEdges, setSelectedEdge]);
 
     const handleDeleteEdge = () => {
-        setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdge));
+        setEdges((eds) => {
+            const nextEdges = eds.filter((edge) => edge.id !== selectedEdge);
+            setTimeout(() => runLocalValidation(nodesRef.current, nextEdges), 0);
+            return nextEdges;
+        });
         setSelectedEdge(null);
     };
 
@@ -1177,6 +1572,7 @@ function Inference() {
 
         const baseSpacingX = 50;
         const yIncrement = 10;
+        const newNodesList = [];
 
         for (let i = 0; i < presetNodes.length; i++) {
             const nodeType = presetNodes[i].nodeType;
@@ -1199,8 +1595,13 @@ function Inference() {
 
                 style: { backgroundColor: nodeTypeColorMap[nodeType] }
             };
-            setNodes((nds) => nds.concat(newNode));
+            newNodesList.push(newNode);
         }
+        setNodes((nds) => {
+            const nextNodes = nds.concat(newNodesList);
+            setTimeout(() => runLocalValidation(nextNodes, edgesRef.current), 0);
+            return nextNodes;
+        });
     }
 
 
@@ -1416,6 +1817,7 @@ function Inference() {
                             selectedIssue={resolverSelectedIssue}
                             setSelectedIssue={setResolverSelectedIssue}
                             applyGraphAction={applyGraphAction}
+                            applyGraphActionsBatch={applyGraphActionsBatch}
                             setResolverStatus={setResolverStatus}
                         />
                         <Modal

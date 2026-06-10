@@ -140,6 +140,7 @@ const ResolverAssistantPanel = ({
   selectedIssue = null,
   setSelectedIssue,
   applyGraphAction,
+  applyGraphActionsBatch,
   setResolverStatus
 }) => {
   const [collapsedDetails, setCollapsedDetails] = useState({});
@@ -180,16 +181,17 @@ const ResolverAssistantPanel = ({
       setResolverStatus("FIXING");
     }
 
+    let batchApplied = false;
     try {
+      const allActions = [];
+
       // 1. Check for missing model selection and autoselect model
       const modelIssue = issues.find(issue => issue.id?.includes("missing_model_selection") || issue.id?.includes("missing_model"));
       if (modelIssue && hasInputSelection()) {
-        if (typeof applyGraphAction === 'function') {
-          await applyGraphAction({
-            type: "auto_select_model",
-            node_id: modelIssue.node_id
-          });
-        }
+        allActions.push({
+          type: "auto_select_model",
+          node_id: modelIssue.node_id
+        });
       }
 
       // 2. Check for other structural issues and fix via LLM
@@ -218,7 +220,16 @@ const ResolverAssistantPanel = ({
         const data = response.data;
 
         if (data && Array.isArray(data.actions) && data.actions.length > 0) {
-          for (const action of data.actions) {
+          allActions.push(...data.actions);
+        }
+      }
+
+      if (allActions.length > 0) {
+        if (typeof applyGraphActionsBatch === 'function') {
+          await applyGraphActionsBatch(allActions);
+          batchApplied = true;
+        } else {
+          for (const action of allActions) {
             if (typeof applyGraphAction === 'function') {
               await applyGraphAction(action);
             }
@@ -233,7 +244,7 @@ const ResolverAssistantPanel = ({
       if (typeof setResolverStatus === 'function') {
         setResolverStatus("IDLE");
       }
-      if (typeof triggerValidation === 'function') {
+      if (!batchApplied && typeof triggerValidation === 'function') {
         triggerValidation();
       }
     }
@@ -254,8 +265,9 @@ const ResolverAssistantPanel = ({
   };
 
   // Extract variables safely
-  const valid = validationResult ? validationResult.valid : true;
-  const issues = validationResult ? validationResult.issues || [] : [];
+  const isEmptyWorkspace = !nodes || nodes.length === 0;
+  const valid = isEmptyWorkspace ? true : (validationResult ? validationResult.valid : true);
+  const issues = isEmptyWorkspace ? [] : (validationResult ? validationResult.issues || [] : []);
 
   // Helper to highlight a node in ReactFlow
   const highlightNode = (nodeId) => {
@@ -266,6 +278,31 @@ const ResolverAssistantPanel = ({
 
   // Generate GitHub-actions style timeline validation steps
   const getTimelineSteps = () => {
+    if (isEmptyWorkspace) {
+      return [
+        {
+          label: "Graph Structure Check",
+          description: "No components in workspace",
+          status: "pending"
+        },
+        {
+          label: "Semantic Integrity",
+          description: "Execution chain is empty",
+          status: "pending"
+        },
+        {
+          label: "Inputs & Bindings",
+          description: "No input node defined",
+          status: "pending"
+        },
+        {
+          label: "Readiness Status",
+          description: "Add components to start",
+          status: "pending"
+        }
+      ];
+    }
+
     const hasCycle = issues.some(i => i.id === "graph_has_cycle");
     const hasSemanticError = issues.some(i => i.id?.includes("mismatch") || i.id?.includes("incompatible"));
     const hasMissingNode = issues.some(i => i.id?.includes("missing_dataset") || i.id?.includes("missing_model"));
@@ -422,7 +459,7 @@ const ResolverAssistantPanel = ({
           </Box>
         </Box>
         <Box display="flex" alignItems="center" gap={0.5}>
-          <IconButton onClick={() => triggerValidation()} size="small" style={{ color: "#64748B" }} title="Run Re-validation Check">
+          <IconButton onClick={() => triggerValidation(null, null, true)} size="small" style={{ color: "#64748B" }} title="Run Re-validation Check">
             <RefreshIcon style={{ fontSize: "18px" }} />
           </IconButton>
           <IconButton onClick={onClose} size="small" style={{ color: "#64748B" }}>
@@ -438,8 +475,8 @@ const ResolverAssistantPanel = ({
         <Box
           style={{
             padding: "16px",
-            backgroundColor: valid ? "#ECFDF5" : "#FEF3C7",
-            border: valid ? "1px solid #D1FAE5" : "1px solid #FDE68A",
+            backgroundColor: isEmptyWorkspace ? "#F8FAFC" : (valid ? "#ECFDF5" : "#FEF3C7"),
+            border: isEmptyWorkspace ? "1px solid #E2E8F0" : (valid ? "1px solid #D1FAE5" : "1px solid #FDE68A"),
             borderRadius: "14px",
             boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
             display: "flex",
@@ -449,19 +486,24 @@ const ResolverAssistantPanel = ({
         >
           <Box display="flex" flexDirection="column" gap="4px">
             <Box display="flex" alignItems="center" gap={1}>
-              {valid ? (
+              {isEmptyWorkspace ? (
+                <HelpOutlineIcon style={{ color: "#64748B", fontSize: "18px" }} />
+              ) : valid ? (
                 <CheckCircleOutlineIcon style={{ color: "#059669", fontSize: "18px" }} />
               ) : (
                 <WarningAmberIcon style={{ color: "#D97706", fontSize: "18px" }} />
               )}
-              <Typography variant="subtitle2" style={{ fontWeight: 600, color: valid ? "#065F46" : "#92400E", fontSize: "13px" }}>
-                {valid ? "Pipeline Semantically Sound" : `${issues.length} Blocker Issue${issues.length > 1 ? "s" : ""} Detected`}
+              <Typography variant="subtitle2" style={{ fontWeight: 600, color: isEmptyWorkspace ? "#475569" : (valid ? "#065F46" : "#92400E"), fontSize: "13px" }}>
+                {isEmptyWorkspace ? "No Pipeline Detected" : (valid ? "Pipeline Semantically Sound" : `${issues.length} Blocker Issue${issues.length > 1 ? "s" : ""} Detected`)}
               </Typography>
             </Box>
-            <Typography variant="body2" style={{ color: valid ? "#047857" : "#B45309", fontSize: "12px", paddingLeft: "26px", lineHeight: "1.4" }}>
-              {valid 
-                ? "All validation checks passed. The pipeline is fully configured and ready for execution." 
-                : "Review the diagnostics and recommended repairs below to fix structural anomalies."
+            <Typography variant="body2" style={{ color: isEmptyWorkspace ? "#64748B" : (valid ? "#047857" : "#B45309"), fontSize: "12px", paddingLeft: "26px", lineHeight: "1.4" }}>
+              {isEmptyWorkspace 
+                ? "Add components to the canvas to compile and validate your machine learning workflow." 
+                : (valid 
+                  ? "All validation checks passed. The pipeline is fully configured and ready for execution." 
+                  : "Review the diagnostics and recommended repairs below to fix structural anomalies."
+                )
               }
             </Typography>
           </Box>
@@ -549,6 +591,31 @@ const ResolverAssistantPanel = ({
             })}
           </Box>
         </Box>
+
+        {isEmptyWorkspace && (
+          <Box
+            style={{
+              padding: "24px",
+              textAlign: "center",
+              backgroundColor: "#FFFFFF",
+              border: "1px dashed #E5E7EB",
+              borderRadius: "14px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "12px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+            }}
+          >
+            <PsychologyIcon style={{ fontSize: "40px", color: "#94A3B8" }} />
+            <Typography variant="subtitle2" style={{ fontWeight: 600, color: "#1E293B", fontSize: "14px" }}>
+              Workspace is Empty
+            </Typography>
+            <Typography variant="body2" style={{ color: "#64748B", fontSize: "12px", lineHeight: "1.5" }}>
+              Drag and drop components (Presets or Custom nodes) from the left sidebar to start building your machine learning pipeline.
+            </Typography>
+          </Box>
+        )}
 
         {/* Section 2: AI Diagnostics Cards */}
         {!valid && issues.length > 0 && (
