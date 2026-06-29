@@ -78,6 +78,8 @@ function Train() {
   const [targetColumn, setTargetColumn] = React.useState("");
   const [inputType, setInputType] = React.useState("");
   const [modelName, setModelName] = React.useState("");
+  const [usecase, setUsecase] = React.useState("");
+  const [visibility, setVisibility] = React.useState("Public");
   const [classifierMap, setClassifierMap] = React.useState({});
   const [regressorMap, setRegressorMap] = React.useState({});
   const [sentimentMap, setSentimentMap] = React.useState({});
@@ -107,6 +109,8 @@ function Train() {
       setTargetColumn(data.targetColumn);
     }
     setModelName(data.modelName);
+    if (data.usecase !== undefined) setUsecase(data.usecase);
+    if (data.visibility !== undefined) setVisibility(data.visibility);
   };
 
   const updateStep1Variables = (data) => {
@@ -237,6 +241,8 @@ function Train() {
         model_name: modelName,
         target_column: targetColumn,
         isUpdate: "False",
+        usecase: usecase,
+        visibility: visibility,
       })
       .then((response) => {
         console.log("These are the modeldeatils", response.data);

@@ -46,6 +46,9 @@ def trainModel():
             hyperparameters = 'None'
         model_id = data['model_id']
 
+    usecase = data.get('usecase', '')
+    visibility = data.get('visibility', 'Public')
+
     # if metric_type.lower() != 'autoselect':
     #     metric_type = data['custom_metric_type']
 
@@ -54,7 +57,7 @@ def trainModel():
     else:
         process_path = os.getenv('PROJECT_PATH') + 'functions/trainModelCustom.py'
     
-    process = subprocess.Popen(['python3.12', '-u', process_path, dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id, isUpdate], stderr=subprocess.PIPE, bufsize=1, text=True)
+    process = subprocess.Popen(['python3.12', '-u', process_path, dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id, isUpdate, usecase, visibility], stderr=subprocess.PIPE, bufsize=1, text=True)
 
     status = 'Loading'
     current_model = 'Initialising'

@@ -19,7 +19,7 @@ sys.path.append('../Enums/')
 from Enums.enums import ClassificationMetrics, RegressionMetrics, ImageClassificationMetrics
 
 
-def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id=None, isUpdate=False):
+def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id=None, isUpdate=False, usecase="", visibility="Public"):
 
 
     if metric_mode.lower() == 'autoselect':
@@ -164,6 +164,8 @@ def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target
             'model_id': new_model_id,
             'model_name': model_name,
             'username': username,
+            'usecase': usecase,
+            'visibility': visibility,
             'training_mode': 'Custom',
             'estimator_type': best_model_name,
             'metric_mode': metric_mode,
@@ -231,11 +233,14 @@ objective = sys.argv[8]
 model_id = sys.argv[9]  # not needed when training for the first time
 isUpdate = sys.argv[10] # whether to update the model or not
 
+usecase = sys.argv[11] if len(sys.argv) > 11 else ""
+visibility = sys.argv[12] if len(sys.argv) > 12 else "Public"
+
 ic(dataset_id, model_name, model_type, hyperparameters,
    target_column, metric_mode, metric_type, objective, model_id, isUpdate)
 
 details = trainModelCustom(dataset_id, model_name, model_type, hyperparameters,
-                           target_column, metric_mode, metric_type, objective, model_id, isUpdate)
+                           target_column, metric_mode, metric_type, objective, model_id, isUpdate, usecase=usecase, visibility=visibility)
 details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
 with open(details_path, 'wb') as f:
     pickle.dump(details, f)

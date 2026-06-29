@@ -46,6 +46,8 @@ function ActiveStep0(props) {
   const [targetColumn, setTargetColumn] = React.useState("");
   const [modelName, setModelName] = React.useState("");
   const [selectedDatasetType, setSelectedDatasetType] = React.useState("");
+  const [usecase, setUsecase] = React.useState("");
+  const [visibility, setVisibility] = React.useState("Public");
 
   const apiBaseUrl =
     process.env.REACT_APP_API_BASE_URL || "";
@@ -125,6 +127,8 @@ function ActiveStep0(props) {
         objective: objective,
         modelName: modelName,
         inputType: inputType,
+        usecase: usecase,
+        visibility: visibility,
       });
     } else {
       props.parentCallback({
@@ -133,6 +137,8 @@ function ActiveStep0(props) {
         objective: objective,
         targetColumn: targetColumn,
         modelName: modelName,
+        usecase: usecase,
+        visibility: visibility,
       });
     }
   };
@@ -287,6 +293,38 @@ function ActiveStep0(props) {
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
               />
+            </Col>
+          </Row>
+          <Row className="align-items-center mb-3">
+            <Col md="2">Enter Use Case:</Col>
+            <Col md="6">
+              <TextField
+                label="Use Case Description"
+                variant="outlined"
+                fullWidth
+                multiline
+                rows={3}
+                placeholder="e.g. Predicting housing prices based on location and size"
+                value={usecase}
+                onChange={(e) => setUsecase(e.target.value)}
+              />
+            </Col>
+          </Row>
+          <Row className="align-items-center mb-3">
+            <Col md="2">Model Visibility:</Col>
+            <Col md="6">
+              <FormControl component="fieldset">
+                <RadioGroup
+                  row
+                  aria-label="visibility"
+                  name="visibility"
+                  value={visibility}
+                  onChange={(e) => setVisibility(e.target.value)}
+                >
+                  <FormControlLabel value="Public" control={<Radio />} label="Public" />
+                  <FormControlLabel value="Private" control={<Radio />} label="Private" />
+                </RadioGroup>
+              </FormControl>
             </Col>
           </Row>
         </Box>

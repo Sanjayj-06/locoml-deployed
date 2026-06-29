@@ -21,7 +21,7 @@ sys.path.append('../Enums/')
 from Enums.enums import ClassificationMetrics, RegressionMetrics, ImageClassificationMetrics, SentimentAnalysisMetrics
 
 
-def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective):
+def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective, usecase="", visibility="Public"):
     
     print("Entered AUTOML",flush=True)
     if metric_mode.lower() == 'autoselect':
@@ -245,6 +245,8 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
         'model_id' : model_id,
         'model_name' : model_name,
         'username': username,
+        'usecase': usecase,
+        'visibility': visibility,
         'training_mode' : 'AutoML',
         'estimator_type' : best_model_name,
         'metric_mode' : metric_mode,
@@ -290,10 +292,13 @@ objective = sys.argv[8]
 model_id = sys.argv[9] # not needed in automl
 isUpdate = sys.argv[10] # not needed in automl
 
+usecase = sys.argv[11] if len(sys.argv) > 11 else ""
+visibility = sys.argv[12] if len(sys.argv) > 12 else "Public"
+
 ic(dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id)
 
 try:
-    details = trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective)
+    details = trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective, usecase=usecase, visibility=visibility)
     details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
     with open(details_path, 'wb') as f:
         pickle.dump(details, f)

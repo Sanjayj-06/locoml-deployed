@@ -10,6 +10,15 @@ from auth_helper import get_user_from_request
 
 getTrainedModels = Blueprint("getTrainedModels", __name__)
 
+try:
+    from sentence_transformers import SentenceTransformer, util
+    print("[INFO] Loading SentenceTransformer model...")
+    semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("[INFO] SentenceTransformer model loaded successfully.")
+except Exception as e:
+    print(f"[WARNING] Could not load SentenceTransformer: {e}")
+    semantic_model = None
+
 
 @getTrainedModels.route("/getTrainedModels/all", methods=["GET"])
 def getTrainedModelListAll():
@@ -234,7 +243,11 @@ def get_recommendation():
         current_username = get_user_from_request()
         
         # We want to find models from OTHER users
-        query = {"objective": objective, "model_id": {"$ne": model_id}}
+        query = {
+            "objective": objective, 
+            "model_id": {"$ne": model_id},
+            "visibility": {"$ne": "Private"}
+        }
         candidates = list(collection.find(query))
         
         # Filter candidates to find other users' models if possible:
@@ -249,9 +262,9 @@ def get_recommendation():
         if not final_candidates:
             # Fallback mock recommendation if no other models are found in database
             simulated_username = "expert_ml_user"
-            simulated_name = "Alex Rivera"
+            simulated_name = "Anonymous Creator"
             simulated_company = "DeepMind Solutions"
-            simulated_email = "alex.rivera@deepmind.example.com"
+            simulated_email = "hidden@locoml.example.com"
             
             if objective == "regression":
                 rec_model_name = "XGBoost Regressor Optimizer"
@@ -309,10 +322,23 @@ def get_recommendation():
             
         # Score and rank candidates based on similarity and performance
         scored_candidates = []
+        chosen_usecase = chosen_model.get("usecase", "")
+        
+        # Precompute embedding for chosen model if available
+        chosen_embedding = None
+        if semantic_model and chosen_usecase:
+            chosen_embedding = semantic_model.encode(chosen_usecase)
+
         for cand in final_candidates:
             sim_score = 0
-            if target_column and cand.get("target_column") and str(cand.get("target_column")).lower() == str(target_column).lower():
-                sim_score += 10
+            
+            # Semantic Similarity Scoring
+            cand_usecase = cand.get("usecase", "")
+            if chosen_embedding is not None and cand_usecase:
+                cand_embedding = semantic_model.encode(cand_usecase)
+                cos_sim = util.cos_sim(chosen_embedding, cand_embedding).item()
+                # Multiply by 10 to give it a significant weight compared to performance differences
+                sim_score += (cos_sim * 10)
                 
             cand_metrics = cand.get("evaluation_metrics", [])
             perf_val = 0.0
@@ -349,18 +375,18 @@ def get_recommendation():
             rec_user_doc = db["Users"].find_one({"username": rec_username})
             if rec_user_doc:
                 rec_user_details = {
-                    "username": rec_username,
-                    "name": rec_user_doc.get("name", rec_username),
+                    "username": "Hidden User",
+                    "name": "Anonymous Creator",
                     "company": rec_user_doc.get("company", "Unknown Company"),
-                    "email": rec_user_doc.get("email", "")
+                    "email": "hidden@locoml.example.com"
                 }
                 
         if not rec_user_details:
             rec_user_details = {
-                "username": rec_username or "system_expert",
-                "name": f"{rec_username.capitalize()} (Expert)" if rec_username else "Alex Rivera",
+                "username": "Hidden User",
+                "name": "Anonymous Creator",
                 "company": "LoCoML Global Zoo",
-                "email": f"{rec_username or 'system'}@locoml.example.com"
+                "email": "hidden@locoml.example.com"
             }
             
         chosen_metric_value = 0.0
