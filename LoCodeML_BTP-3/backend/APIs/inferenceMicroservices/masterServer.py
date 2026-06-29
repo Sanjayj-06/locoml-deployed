@@ -846,11 +846,15 @@ def resolver_assistant_chat():
             
             fallback_reps = []
             fallback_actions = []
+            needs_auto_link = False
             
             for issue in issues:
                 issue_id = issue.get("id", "")
                 issue_msg = issue.get("message", "")
                 node_id = issue.get("node_id")
+                
+                if issue_id in ["disconnected_model_node", "incomplete_execution_chain", "unreachable_terminal_node", "isolated_pipeline_component", "disconnected_graph"]:
+                    needs_auto_link = True
                 
                 if issue_id == "graph_has_cycle":
                     edges_to_delete = []
@@ -909,6 +913,30 @@ def resolver_assistant_chat():
                 elif "missing_model_selection" in issue_id and node_id:
                     fallback_reps.append(f"- **Missing Model Selection**: Please select a trained model for Model node '{node_id}'.")
             
+            if needs_auto_link:
+                input_nodes = [n for n in nodes if _normalize_node_type(n) == "inputdata"]
+                prep_nodes = [n for n in nodes if _normalize_node_type(n) == "preprocessing"]
+                adapter_nodes = [n for n in nodes if _normalize_node_type(n) == "adapter"]
+                model_nodes = [n for n in nodes if _normalize_node_type(n) in ["classification", "regression", "sentiment", "huggingface", "imageclassification"]]
+                
+                chain = input_nodes + prep_nodes + adapter_nodes + model_nodes
+                existing_edges = set((e.get("source"), e.get("target")) for e in edges)
+                
+                added_links = 0
+                for i in range(len(chain) - 1):
+                    src = chain[i].get("id")
+                    tgt = chain[i+1].get("id")
+                    if src and tgt and (src, tgt) not in existing_edges:
+                        fallback_actions.append({
+                            "type": "add_edge",
+                            "source": src,
+                            "target": tgt
+                        })
+                        added_links += 1
+                        
+                if added_links > 0:
+                    fallback_reps.append(f"- **Structural Issue**: Reconnected {added_links} disconnected pipeline blocks into a linear execution chain.")
+
             if not fallback_reps:
                 fallback_reps.append("The validation check reported issues, but no automated quick-fixes are available. Please adjust your nodes manually.")
                 
