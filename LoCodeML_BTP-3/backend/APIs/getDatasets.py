@@ -3,7 +3,7 @@ from mongoDB import db
 
 import os
 import sys 
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 import bson.json_util as json_util
 from auth_helper import get_user_from_request
 

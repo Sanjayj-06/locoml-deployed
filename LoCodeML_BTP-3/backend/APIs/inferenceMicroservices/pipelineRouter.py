@@ -16,7 +16,7 @@ from dotenv import load_dotenv, find_dotenv
 from flask_cors import CORS
 
 load_dotenv(find_dotenv())
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 from mongoDB import db
 from auth_helper import get_user_from_request
 

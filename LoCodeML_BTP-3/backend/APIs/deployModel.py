@@ -6,7 +6,7 @@ import pandas as pd
 import shutil
 import subprocess
 from docker import from_env
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 
 from mongoDB import db
 collection = db['Model_zoo']

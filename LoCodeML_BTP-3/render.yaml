@@ -14,6 +14,8 @@ services:
           property: connectionString
       - key: MONGO_URI
         sync: false
+      - key: PROJECT_PATH
+        value: /app/
       - key: MASTER_SERVER_URL
         value: http://locodeml-master-server:5001
       - key: INPUT_ROUTER_URL
@@ -33,6 +35,8 @@ services:
     dockerContext: ./backend
     dockerCommand: python APIs/inferenceMicroservices/masterServer.py
     envVars:
+      - key: PROJECT_PATH
+        value: /app/
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL

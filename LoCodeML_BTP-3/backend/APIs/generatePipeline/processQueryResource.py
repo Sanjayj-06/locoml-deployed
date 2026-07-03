@@ -1,7 +1,7 @@
 import sys
 import json
 import os
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 from functions.LLM_API import LLM
 from mongoDB import db
 from auth_helper import get_user_from_request

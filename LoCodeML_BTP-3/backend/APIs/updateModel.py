@@ -9,7 +9,7 @@ import bson.json_util as json_util
 import pandas as pd
 import nanoid
 from datetime import datetime
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 sys.path.append('../')
 
 from Enums import enums

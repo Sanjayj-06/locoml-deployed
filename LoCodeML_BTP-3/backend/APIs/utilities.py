@@ -5,7 +5,7 @@ import os
 import sys
 import inspect
 import sklearn
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 sys.path.append('../')
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier

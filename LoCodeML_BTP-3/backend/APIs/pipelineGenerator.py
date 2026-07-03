@@ -8,7 +8,7 @@ load_dotenv()
 
 HYPERBOLIC_API_KEY = os.getenv("HYPERBOLIC_API_KEY")
 
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 from auth_helper import get_user_from_request
 
 from APIs.generatePipeline.llm import LLMService

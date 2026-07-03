@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 
 # Using the unified LLM service for ECOS adaptive routing
 from llm.llm_service import UnifiedLLMService

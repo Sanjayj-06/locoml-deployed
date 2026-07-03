@@ -3,7 +3,7 @@ import nanoid
 import os
 import sys
 import datetime
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 
 storeDataset = Blueprint('storeDataset', __name__)
 from mongoDB import db

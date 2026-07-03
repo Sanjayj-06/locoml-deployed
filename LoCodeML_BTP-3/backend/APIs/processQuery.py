@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 import sys
 import json
 import os
-sys.path.append(os.getenv('PROJECT_PATH'))
+sys.path.append(os.getenv('PROJECT_PATH', ''))
 from APIs.generatePipeline.processQueryResource import ProcessQuery
 
 processQuery = Blueprint('processQuery', __name__)
