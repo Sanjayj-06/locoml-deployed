@@ -5,6 +5,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    dockerCommand: python app.py
     envVars:
       - key: REDIS_URL
         fromService:
