@@ -391,3 +391,7 @@ h5py>=3.8.0
 # Computer Vision
 opencv-python==4.8.1.78
 opencv-python-headless==4.8.1.78  # Headless version for Docker containers
+
+python-dotenv==1.0.1
+psutil==5.9.8
+gunicorn==22.0.0

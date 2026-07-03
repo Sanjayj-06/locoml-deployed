@@ -5,7 +5,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    dockerCommand: python app.py
+    dockerCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: REDIS_URL
         fromService:
