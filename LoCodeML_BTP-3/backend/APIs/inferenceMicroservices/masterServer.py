@@ -17,7 +17,7 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(app)
 
 nodeDetails = []
 nodes_dict = dict()

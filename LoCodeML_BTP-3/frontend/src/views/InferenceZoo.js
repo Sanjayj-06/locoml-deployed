@@ -26,7 +26,7 @@ function InferenceZoo() {
     const CHUNK_SIZE = 3 // number of items in one row to be displayed on the page
 
     React.useEffect(() => {
-        const getPipelinesUrl = process.env.REACT_APP_INFERENCE_PIPELINE_ZOO_GET_PIPELINES || "http://localhost:5005/getPipelinesList";
+        const getPipelinesUrl = (process.env.REACT_APP_INFERENCE_PIPELINE_ZOO_GET_PIPELINES || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/pipeline-router/getPipelinesList"));
         axios.get(getPipelinesUrl + `/?page=${pageNum}&limit=${pageLimit}`)
             .then(async (response) => {
                 console.log(response.data);

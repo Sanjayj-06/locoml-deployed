@@ -31,7 +31,7 @@ const MetricsOverlay = ({ hoveredNodeInfo, pipelineRunning = false, pipelinePaus
     const fetchTelemetry = async () => {
       try {
         const nodeType = activeNodeInfo.node?.type || 'default';
-        const response = await axios.get(`http://localhost:5001/telemetry/${nodeType}`);
+        const response = await axios.get(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/telemetry/${nodeType}`);
         setRealTelemetry(response.data);
       } catch (err) {
         // Silent fail on telemetry fetch error

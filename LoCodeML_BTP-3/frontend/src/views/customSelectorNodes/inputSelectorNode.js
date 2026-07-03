@@ -155,7 +155,7 @@ export default memo(({ id, data, isConnectable }) => {
         const formDataObject = Object.fromEntries(formData.entries());
         console.log(formDataObject);
 
-        axios.post("http://localhost:5001/getFile", formData, {
+        axios.post(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/getFile`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             }

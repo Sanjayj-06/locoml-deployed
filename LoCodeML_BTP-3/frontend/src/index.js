@@ -30,6 +30,9 @@ import AdminLayout from "layouts/Admin.js";
 import Login from "views/Auth/Login.js";
 import Register from "views/Auth/Register.js";
 
+// Setup global Axios base URL
+axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
 // Setup global Axios request interceptor to attach authentication token and user ID
 axios.interceptors.request.use(
   (config) => {

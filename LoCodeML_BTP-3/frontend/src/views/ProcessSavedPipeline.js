@@ -33,7 +33,7 @@ function ProcessSavedPipeline() {
     const [showCURLCommand, setShowCURLCommand] = useState([]);
 
     useEffect(() => {
-        const retrieveUrl = process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || "http://localhost:5005/retrievePipelineDetails";
+        const retrieveUrl = (process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/pipeline-router/retrievePipelineDetails"));
         axios.get(retrieveUrl + `/?pipeline_id=${pipeline_id}`)
             .then(async (response) => {
                 let data = response.data;
@@ -71,7 +71,7 @@ function ProcessSavedPipeline() {
         formData.append('filename', file.name);
         formData.append('nodeid', inputBlockList[index].id);
 
-        const getFileInputUrl = process.env.REACT_APP_MASTER_SERVER_GET_INPUT_FILE || "http://localhost:5001/getFile";
+        const getFileInputUrl = process.env.REACT_APP_MASTER_SERVER_GET_INPUT_FILE || `${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/getFile`;
         await axios.post(getFileInputUrl, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -102,7 +102,7 @@ function ProcessSavedPipeline() {
 
         const callMaster = async () => {
             try {
-                const runPipelineUrl = process.env.REACT_APP_RUN_INFERENCE_PIPELINE || "http://localhost:5001/nodeInfo";
+                const runPipelineUrl = process.env.REACT_APP_RUN_INFERENCE_PIPELINE || `${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/nodeInfo`;
                 const response = await axios.post(runPipelineUrl, {
                     nodes: nodes,
                     edges: edges
@@ -235,10 +235,10 @@ function ProcessSavedPipeline() {
                                         maxWidth: '600px',
                                         marginRight: '10px'
                                     }}>
-                                        curl -X POST -F {"file=@Datasets/<input_dataset_name>.csv"} http://localhost:5005/getCSVInput/{pipeline_id} --output output.csv
+                                        curl -X POST -F {"file=@Datasets/<input_dataset_name>.csv"} http://localhost:5000/proxy/pipeline-router/getCSVInput/{pipeline_id} --output output.csv
                                     </div>
                                     <Button
-                                        onClick={() => handleCopyCurlCommand(`curl -X POST -F "file=@Datasets/${inputBlock.uploadedFileName}.csv" http://localhost:5005/getCSVInput/${pipeline_id} --output output.csv`)}
+                                        onClick={() => handleCopyCurlCommand(`curl -X POST -F "file=@Datasets/${inputBlock.uploadedFileName}.csv" http://localhost:5000/proxy/pipeline-router/getCSVInput/${pipeline_id} --output output.csv`)}
                                     >
                                         <ContentCopyIcon />
                                     </Button>

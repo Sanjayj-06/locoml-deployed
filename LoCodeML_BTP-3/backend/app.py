@@ -20,6 +20,7 @@ from APIs.pipelineGenerator import pipelineGenerator
 from APIs.processQuery import processQuery
 from APIs.stressTest import stressTestAPIs
 from APIs.auth import auth_blueprint
+from APIs.proxy import proxy_blueprint
 
 app = Flask(__name__)
 CORS(app)
@@ -43,8 +44,10 @@ app.register_blueprint(pipelineGenerator)
 app.register_blueprint(processQuery)
 app.register_blueprint(stressTestAPIs)
 app.register_blueprint(auth_blueprint)
+app.register_blueprint(proxy_blueprint)
 
 app.config['REDIS_URL'] = os.getenv('REDIS_URL')
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

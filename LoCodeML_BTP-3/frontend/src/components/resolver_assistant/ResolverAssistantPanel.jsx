@@ -216,7 +216,7 @@ const ResolverAssistantPanel = ({
           message: `Please fix all pipeline validation issues. Generate structured repair actions to resolve disconnected nodes, cycles, and isolated components.`
         };
 
-        const response = await axios.post("http://localhost:5001/resolver-assistant/chat", payload);
+        const response = await axios.post(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/resolver-assistant/chat`, payload);
         const data = response.data;
 
         if (data && Array.isArray(data.actions) && data.actions.length > 0) {

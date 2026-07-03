@@ -1,0 +1,21 @@
+{
+  "files": {
+    "main.css": "/static/css/main.9be09536.css",
+    "main.js": "/static/js/main.4aff521f.js",
+    "static/media/chatbotChat.jpg": "/static/media/chatbotChat.0492cd3aa31f306ef017.jpg",
+    "static/media/damir-bosnjak.jpg": "/static/media/damir-bosnjak.efcaca50b633c2ba2ba9.jpg",
+    "static/media/mike.jpg": "/static/media/mike.d34d0690a264ad046861.jpg",
+    "static/media/nucleo-icons.eot": "/static/media/nucleo-icons.bd42d77b9672555647d1.eot",
+    "static/media/nucleo-icons.ttf": "/static/media/nucleo-icons.4466aeec3386b965a232.ttf",
+    "static/media/apiupload.png": "/static/media/apiupload.520c983a55cb87c6ff42.png",
+    "static/media/nucleo-icons.woff": "/static/media/nucleo-icons.8e954b749f951b654fc6.woff",
+    "static/media/localupload.png": "/static/media/localupload.c010c579fac9bdd0b49b.png",
+    "static/media/nucleo-icons.woff2": "/static/media/nucleo-icons.ec16bc4cc4526801004d.woff2",
+    "static/media/database.png": "/static/media/database.8ce50706b4b6f5b5386b.png",
+    "index.html": "/index.html"
+  },
+  "entrypoints": [
+    "static/css/main.9be09536.css",
+    "static/js/main.4aff521f.js"
+  ]
+}

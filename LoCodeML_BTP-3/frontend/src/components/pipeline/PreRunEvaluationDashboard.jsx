@@ -24,14 +24,14 @@ import { evaluateHealth } from './HealthEvaluator';
 import { buildPredictionMessage, simulateRuntimeMetrics } from './RuntimeHealthEngine';
 
 const MODEL_ENDPOINTS = {
-  classification: 'http://localhost:5000/getTrainedModels/classification',
-  regression: 'http://localhost:5000/getTrainedModels/regression',
-  sentiment: 'http://localhost:5000/getTrainedModels/sentiment',
-  imageclassification: 'http://localhost:5000/getTrainedModels/imageclassification',
-  machinetranslation: 'http://localhost:5000/getTrainedModels/machinetranslation',
+  classification: '/getTrainedModels/classification',
+  regression: '/getTrainedModels/regression',
+  sentiment: '/getTrainedModels/sentiment',
+  imageclassification: '/getTrainedModels/imageclassification',
+  machinetranslation: '/getTrainedModels/machinetranslation',
 };
 
-const PRE_RUN_INFERENCE_ENDPOINT = 'http://localhost:5001/preRunNodeInference';
+const PRE_RUN_INFERENCE_ENDPOINT = `${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/preRunNodeInference`;
 
 const MODEL_NODE_TYPES = new Set([
   'classification',

@@ -1,0 +1,86 @@
+services:
+  # Main Web Service (Backend API Gateway)
+  - type: web
+    name: locodeml-main
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: locodeml-redis
+          property: connectionString
+      - key: MONGO_URI
+        sync: false
+      - key: MASTER_SERVER_URL
+        value: http://locodeml-master-server:5001
+      - key: INPUT_ROUTER_URL
+        value: http://locodeml-input-router:5002
+      - key: PREPROCESS_ROUTER_URL
+        value: http://locodeml-preprocess-router:5003
+      - key: MODEL_ROUTER_URL
+        value: http://locodeml-model-router:5004
+      - key: PIPELINE_ROUTER_URL
+        value: http://locodeml-pipeline-router:5005
+
+  # Private Services for Microservices
+  - type: pserv
+    name: locodeml-master-server
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python APIs/inferenceMicroservices/masterServer.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: locodeml-redis
+          property: connectionString
+
+  - type: pserv
+    name: locodeml-input-router
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python APIs/inferenceMicroservices/inputRouter.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+
+  - type: pserv
+    name: locodeml-preprocess-router
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python APIs/inferenceMicroservices/preprocessRouter.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+
+  - type: pserv
+    name: locodeml-model-router
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python APIs/inferenceMicroservices/modelRouter.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+
+  - type: pserv
+    name: locodeml-pipeline-router
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python APIs/inferenceMicroservices/pipelineRouter.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+
+  # Managed Redis Instance
+  - type: redis
+    name: locodeml-redis
+    ipAllowList: [] # Allow internal Render connections only

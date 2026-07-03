@@ -399,7 +399,7 @@ function Inference() {
         const inpNode = activeNodes.find(node => node.type === 'inputData' || node.data?.label === 'Inputs');
         const dsInfo = inpNode?.data?.entity;
         try {
-            const response = await axios.post("http://localhost:5001/resolver-assistant/validate", {
+            const response = await axios.post(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/resolver-assistant/validate`, {
                 nodes: activeNodes,
                 edges: activeEdges,
                 dataset_id: dsInfo,
@@ -535,7 +535,7 @@ function Inference() {
 
                 let boundModelData = null;
                 try {
-                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
+                    const res = await axios.get(`/getTrainedModels/${objective}`);
                     const responseData = res.data?.trained_models || [];
                     const trainedModels = responseData.map(modelStr => {
                         try {
@@ -704,7 +704,7 @@ function Inference() {
                 break;
             case "bind_dataset": {
                 try {
-                    const res = await axios.get("http://localhost:5000/getDatasets");
+                    const res = await axios.get("/getDatasets");
                     const datasets = res.data?.dataset_list || [];
                     if (datasets.length > 0) {
                         const firstDs = datasets[0];
@@ -727,7 +727,7 @@ function Inference() {
                 else if (modelNode.type === 'imageclassification') objective = "imageclassification";
 
                 try {
-                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
+                    const res = await axios.get(`/getTrainedModels/${objective}`);
                     const responseData = res.data?.trained_models || [];
                     const trainedModels = responseData.map(modelStr => {
                         try {
@@ -811,7 +811,7 @@ function Inference() {
         const getDatasetsCached = async () => {
             if (!datasetsCache) {
                 try {
-                    const res = await axios.get("http://localhost:5000/getDatasets");
+                    const res = await axios.get("/getDatasets");
                     datasetsCache = res.data?.dataset_list || [];
                 } catch (err) {
                     console.error("Failed to fetch datasets during auto-repair:", err);
@@ -824,7 +824,7 @@ function Inference() {
         const getTrainedModelsCached = async (objective) => {
             if (!modelsCache[objective]) {
                 try {
-                    const res = await axios.get(`http://localhost:5000/getTrainedModels/${objective}`);
+                    const res = await axios.get(`/getTrainedModels/${objective}`);
                     const responseData = res.data?.trained_models || [];
                     modelsCache[objective] = responseData.map(modelStr => {
                         try {
@@ -1244,7 +1244,7 @@ function Inference() {
 
         const callMaster = async () => {
             try {
-                const response = await axios.post("http://localhost:5001/nodeInfo", payload);
+                const response = await axios.post(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/nodeInfo`, payload);
 
                 console.log("Received response: ", typeof (response.data));
                 console.log("Response: ", response.data);
@@ -1498,7 +1498,7 @@ function Inference() {
     const handleSavePipeline = async (savedPipelineName) => {
         setSaveButtonText("Saving pipeline...");
         setIsSaveDialogOpen(false);
-        await axios.post("http://localhost:5005/savePipeline", {
+        await axios.post(`${process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"}/proxy/pipeline-router/savePipeline`, {
             nodes: nodes,
             edges: edges,
             pipeline_name: savedPipelineName,
@@ -1525,7 +1525,7 @@ function Inference() {
     const handlePastePipeline = async (pipelineId) => {
         setIsPasteDialogOpen(false);
         try {
-            const retrieveUrl = process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || "http://localhost:5005/retrievePipelineDetails";
+            const retrieveUrl = (process.env.REACT_APP_INFERENCE_PIPELINE_RETRIEVE_PIPELINE_DETAILS || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/pipeline-router/retrievePipelineDetails"));
             const response = await axios.get(retrieveUrl + `/?pipeline_id=${pipelineId}`);
 
             let data = response.data;
@@ -1610,7 +1610,7 @@ function Inference() {
 
         const resumePipeline = async () => {
             try {
-                await axios.post("http://localhost:5001/resumePipeline", {}).then((response) => {
+                await axios.post(`${(process.env.REACT_APP_MASTER_SERVER_URL || ((process.env.REACT_APP_API_BASE_URL || "http://localhost:5000") + "/proxy/master-server"))}/resumePipeline`, {}).then((response) => {
                     if (response.status === 200) {
                         const result = response.data;
                         setCsvData(result);
