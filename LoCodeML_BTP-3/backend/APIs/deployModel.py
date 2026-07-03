@@ -11,7 +11,7 @@ sys.path.append(os.getenv('PROJECT_PATH'))
 from mongoDB import db
 collection = db['Model_zoo']
 
-cli = from_env()
+cli = None
 
 deployModel = Blueprint('deployModel', __name__)
 deployed_model_id = None
@@ -41,9 +41,15 @@ def test():
     else:
         shutil.copy2(src, dst)
 
-    # Build Docker image
-    image, build_log = cli.images.build(path="./", tag="app2")
-    print("Image built")
+    # Check for docker client
+    try:
+        if cli is None:
+            cli = from_env()
+        # Build Docker image
+        image, build_log = cli.images.build(path="./", tag="app2")
+        print("Image built")
+    except Exception as e:
+        return jsonify(message=f"Docker deployment failed: {str(e)}"), 500
 
     # Run Docker container
     container = cli.containers.run("deployment_app", detach=True, ports={'5000/tcp': 8080})
