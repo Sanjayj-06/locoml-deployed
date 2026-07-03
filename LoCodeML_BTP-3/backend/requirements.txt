@@ -394,3 +394,4 @@ opencv-python-headless==4.8.1.78  # Headless version for Docker containers
 
 python-dotenv==1.0.1
 gunicorn==22.0.0
+sentence-transformers==3.0.1
