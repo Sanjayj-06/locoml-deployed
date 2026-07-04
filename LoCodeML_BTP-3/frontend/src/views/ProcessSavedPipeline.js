@@ -235,10 +235,10 @@ function ProcessSavedPipeline() {
                                         maxWidth: '600px',
                                         marginRight: '10px'
                                     }}>
-                                        curl -X POST -F {"file=@Datasets/<input_dataset_name>.csv"} http://localhost:5000/proxy/pipeline-router/getCSVInput/{pipeline_id} --output output.csv
+                                        curl -X POST -F {"file=@Datasets/<input_dataset_name>.csv"} {process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"}/proxy/pipeline-router/getCSVInput/{pipeline_id} --output output.csv
                                     </div>
                                     <Button
-                                        onClick={() => handleCopyCurlCommand(`curl -X POST -F "file=@Datasets/${inputBlock.uploadedFileName}.csv" http://localhost:5000/proxy/pipeline-router/getCSVInput/${pipeline_id} --output output.csv`)}
+                                        onClick={() => handleCopyCurlCommand(`curl -X POST -F "file=@Datasets/${inputBlock.uploadedFileName}.csv" ${process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"}/proxy/pipeline-router/getCSVInput/${pipeline_id} --output output.csv`)}
                                     >
                                         <ContentCopyIcon />
                                     </Button>

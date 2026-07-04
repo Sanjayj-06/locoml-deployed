@@ -568,11 +568,11 @@ def get_node_telemetry(node_type):
     try:
         node_type = node_type.lower()
         if node_type == 'inputdata' or node_type == 'adapter':
-            url = "http://input_router:5002/telemetry"
+            url = "http://locodeml-input-router:5002/telemetry"
         elif node_type == 'preprocessing':
-            url = "http://preprocess_router:5003/telemetry"
+            url = "http://locodeml-preprocess-router:5003/telemetry"
         elif node_type in ['classification', 'regression', 'sentiment', 'imageclassification', 'huggingface']:
-            url = "http://model_router:5004/telemetry"
+            url = "http://locodeml-model-router:5004/telemetry"
         else:
             return jsonify({
                 "cpuUsage": psutil.cpu_percent(interval=None),
@@ -1224,9 +1224,9 @@ def delegate_work():
 def callInputRouter(dataset_id, dataset_type):
     input_port = 5002
     # Use the service name from docker-compose.yml
-    base_url = f"http://input_router:{input_port}"  # Changed from localhost to service name
+    base_url = f"http://locodeml-input-router:{input_port}"  # Changed from localhost to service name
     try:
-        input_health_url = f"http://input_router:{input_port}/health"
+        input_health_url = f"http://locodeml-input-router:{input_port}/health"
         input_health_url = f"{base_url}/health"
         response = requests.get(input_health_url)
         print(f"[DEBUG] Health check response: {response.text}")
@@ -1267,14 +1267,14 @@ def callPreprocessRouter(task, dataset):
         return dataset
     task=entity
     try:
-        preprocess_health_url = f"http://preprocess_router:{preprocess_port}/health"
+        preprocess_health_url = f"http://locodeml-preprocess-router:{preprocess_port}/health"
         response = requests.get(preprocess_health_url)
         if response.text == "OK":
             pass
     except Exception as e:
         print("Preprocess server not responding : ", e)
 
-    preprocess_url = f"http://preprocess_router:{preprocess_port}/preprocess"
+    preprocess_url = f"http://locodeml-preprocess-router:{preprocess_port}/preprocess"
     try:
         response = requests.post(preprocess_url, json={
             'dataset': dataset,
@@ -1303,14 +1303,14 @@ def callModelRouter(model_id, dataset):
     model_port = 5004
     print(f"{preprocessing_tasks}", flush=True)
     try:
-        model_health_url = f"http://model_router:{model_port}/health"
+        model_health_url = f"http://locodeml-model-router:{model_port}/health"
         response = requests.get(model_health_url)
         if response.text == "OK":
             pass
     except Exception as e:
         print("Model server not responding : ", e)
 
-    model_url = f"http://model_router:{model_port}/inference/batch"
+    model_url = f"http://locodeml-model-router:{model_port}/inference/batch"
     try:
         response = requests.post(model_url, json={
             'dataset': dataset,
@@ -1337,14 +1337,14 @@ def callModelRouter(model_id, dataset):
 def callModelRouterForHuggingFace(model_name, task_name, candidate_labels, dataset):
     model_port = 5004
     try:
-        model_health_url = f"http://model_router:{model_port}/health"
+        model_health_url = f"http://locodeml-model-router:{model_port}/health"
         response = requests.get(model_health_url)
         if response.text == "OK":
             pass
     except Exception as e:
         print("Model server not responding : ", e)
     
-    model_url = f"http://model_router:{model_port}/inference/huggingface/batch"
+    model_url = f"http://locodeml-model-router:{model_port}/inference/huggingface/batch"
     try:
         response = requests.post(model_url, json={
             'dataset': dataset,
@@ -1372,14 +1372,14 @@ def callModelRouterForHuggingFace(model_name, task_name, candidate_labels, datas
 def callAdapter(dataset):
     input_port = 5002
     try:
-        input_health_url = f"http://input_router:{input_port}/health"
+        input_health_url = f"http://locodeml-input-router:{input_port}/health"
         response = requests.get(input_health_url)
         if response.text == "OK":
             pass
     except Exception as e:
         print("Input server not responding : ", e)
 
-    input_url = f"http://input_router:{input_port}/input/adaptInferenceDataset"
+    input_url = f"http://locodeml-input-router:{input_port}/input/adaptInferenceDataset"
     try:
         response = requests.post(input_url, json={
             'dataset': dataset,
