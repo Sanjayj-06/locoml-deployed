@@ -10,15 +10,23 @@ from auth_helper import get_user_from_request
 
 getTrainedModels = Blueprint("getTrainedModels", __name__)
 
-try:
-    from sentence_transformers import SentenceTransformer, util
-    print("[INFO] Loading SentenceTransformer model...")
-    semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("[INFO] SentenceTransformer model loaded successfully.")
-except Exception as e:
-    print(f"[WARNING] Could not load SentenceTransformer: {e}")
-    semantic_model = None
+semantic_model = None
+semantic_model_loaded = False
 
+def get_semantic_model():
+    global semantic_model
+    global semantic_model_loaded
+    if not semantic_model_loaded:
+        try:
+            from sentence_transformers import SentenceTransformer, util
+            print("[INFO] Loading SentenceTransformer model...")
+            semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("[INFO] SentenceTransformer model loaded successfully.")
+        except Exception as e:
+            print(f"[WARNING] Could not load SentenceTransformer: {e}")
+            semantic_model = None
+        semantic_model_loaded = True
+    return semantic_model
 
 @getTrainedModels.route("/getTrainedModels/all", methods=["GET"])
 def getTrainedModelListAll():
@@ -326,8 +334,9 @@ def get_recommendation():
         
         # Precompute embedding for chosen model if available
         chosen_embedding = None
-        if semantic_model and chosen_usecase:
-            chosen_embedding = semantic_model.encode(chosen_usecase)
+        model = get_semantic_model()
+        if model and chosen_usecase:
+            chosen_embedding = model.encode(chosen_usecase)
 
         for cand in final_candidates:
             sim_score = 0
@@ -335,7 +344,8 @@ def get_recommendation():
             # Semantic Similarity Scoring
             cand_usecase = cand.get("usecase", "")
             if chosen_embedding is not None and cand_usecase:
-                cand_embedding = semantic_model.encode(cand_usecase)
+                cand_embedding = model.encode(cand_usecase)
+                from sentence_transformers import util
                 cos_sim = util.cos_sim(chosen_embedding, cand_embedding).item()
                 # Multiply by 10 to give it a significant weight compared to performance differences
                 sim_score += (cos_sim * 10)

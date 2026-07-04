@@ -41,3 +41,5 @@ RUN pip install --no-cache-dir kaggle google-generativeai
 
 # Set proper permissions for the application directory
 RUN chmod -R 755 /app/
+
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "0"]
