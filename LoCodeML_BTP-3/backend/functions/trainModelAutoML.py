@@ -14,7 +14,7 @@ import zipfile
 from datasets import load_from_disk
 from icecream import ic
 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 from mongoDB import db
 sys.path.append('../Enums/')
@@ -26,7 +26,7 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
     print("Entered AUTOML",flush=True)
     if metric_mode.lower() == 'autoselect':
         if objective.lower() == 'classification':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.csv'
             df = pd.read_csv(dataset_path)
             class_dist = df[target_column].value_counts()
             is_balanced = class_dist.min() / class_dist.max() > 0.5
@@ -37,22 +37,22 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
                 metric_type = ClassificationMetrics.AUC.value
 
         elif objective.lower() == 'regression':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.csv'
             df = pd.read_csv(dataset_path)
             metric_type = RegressionMetrics.R2.value
         elif objective.lower() == 'imageclassification':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.zip'
-            if not os.path.exists(os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+dataset_id):
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.zip'
+            if not os.path.exists(os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+dataset_id):
                 with zipfile.ZipFile(dataset_path, 'r') as zip_ref:
-                    zip_ref.extractall(os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id)
-            dataset_path = os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id
+                    zip_ref.extractall(os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id)
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id
             dataset = load_from_disk(dataset_path)
             metric_type = ImageClassificationMetrics.Accuracy.value
 
     ic(objective.lower())
     # If objective is machine translation, ensure dataframe and source/target columns are prepared
     if objective.lower() == 'machinetranslation':
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.csv'
         df = pd.read_csv(dataset_path)
         # target_column may be provided as "src_col,target_col" or a single column name.
         if isinstance(target_column, str) and ',' in target_column:
@@ -139,7 +139,7 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
 
     print("Status: Saving Model and Pipeline in file system", file=sys.stderr)
     model_id = nanoid.generate(alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', size=6)
-    save_path = os.getenv('PROJECT_PATH') + 'Models/' + model_id + '.pkl'
+    save_path = os.getenv('PROJECT_PATH', '') + 'Models/' + model_id + '.pkl'
     clf_util.saveModel(best_model_name, save_path)
     # print("Transformation Pipeline and Model Successfully Saved", file=sys.stderr)
     
@@ -299,7 +299,7 @@ ic(dataset_id, model_name, model_type, hyperparameters, target_column, metric_mo
 
 try:
     details = trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective, usecase=usecase, visibility=visibility)
-    details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+    details_path = os.getenv('PROJECT_PATH', '') + 'Usage/details.pkl'
     with open(details_path, 'wb') as f:
         pickle.dump(details, f)
 except Exception as e:
@@ -309,7 +309,7 @@ except Exception as e:
     print(f"[ERROR] Unhandled exception during training: {str(e)}", file=sys.stderr)
     print(tb, file=sys.stderr)
     # Write a failure details file so trainModel API can surface a clearer error
-    details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+    details_path = os.getenv('PROJECT_PATH', '') + 'Usage/details.pkl'
     error_details = {
         'success': False,
         'error': str(e),

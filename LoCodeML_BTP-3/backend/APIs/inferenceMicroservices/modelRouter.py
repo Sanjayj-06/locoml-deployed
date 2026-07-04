@@ -15,7 +15,7 @@ from transformers import pipeline, DistilBertTokenizerFast
 import psutil
 
 load_dotenv(find_dotenv())
-project_path = os.getenv("PROJECT_PATH")
+project_path = os.getenv('PROJECT_PATH', '')
 
 if project_path:
     functions_path = os.path.join(project_path, 'functions')

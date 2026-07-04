@@ -663,9 +663,9 @@ def get_file():
     dataset_type = request.form['dataset_type']
     dataset_id = nanoid.generate(alphabet='0123456789', size=5)
     if dataset_type == 'zip':
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.zip'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.zip'
     else:
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.csv'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.csv'
     dataset_file.save(dataset_path)
 
     # Store the dataset columns and their types for the adapter

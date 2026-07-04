@@ -53,9 +53,9 @@ def trainModel():
     #     metric_type = data['custom_metric_type']
 
     if training_mode.lower() == 'automl':
-        process_path = os.getenv('PROJECT_PATH') + 'functions/trainModelAutoML.py'
+        process_path = os.getenv('PROJECT_PATH', '') + 'functions/trainModelAutoML.py'
     else:
-        process_path = os.getenv('PROJECT_PATH') + 'functions/trainModelCustom.py'
+        process_path = os.getenv('PROJECT_PATH', '') + 'functions/trainModelCustom.py'
     
     process = subprocess.Popen(['python3.12', '-u', process_path, dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id, isUpdate, usecase, visibility], stderr=subprocess.PIPE, bufsize=1, text=True)
 
@@ -117,7 +117,7 @@ def trainModel():
             }, channel='mychannel')
 
     
-    details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+    details_path = os.getenv('PROJECT_PATH', '') + 'Usage/details.pkl'
     with open(details_path, 'rb') as f:
         details = pickle.load(f)
     print(type(details))

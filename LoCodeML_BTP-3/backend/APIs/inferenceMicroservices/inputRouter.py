@@ -19,7 +19,7 @@ from PIL import Image
 import psutil
 
 load_dotenv(dotenv_path="../../.env")
-env_path = os.getenv("PROJECT_PATH")
+env_path = os.getenv('PROJECT_PATH', '')
 
 sys.path.append(env_path)
 
@@ -50,10 +50,10 @@ def getInferenceFile():
     dataset_type = data['dataset_type']
     
     if dataset_type == 'zip':
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.zip'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.zip'
         with zipfile.ZipFile(dataset_path, 'r') as zip_ref:
-            zip_ref.extractall(os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id)
-        dataset_path = os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id
+            zip_ref.extractall(os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id)
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id
         
         # Load the dataset and get the test split
         dataset = load_from_disk(dataset_path)
@@ -75,7 +75,7 @@ def getInferenceFile():
             
     else:
         # Handle CSV case as before
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.csv'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.csv'
         if not os.path.exists(dataset_path):
             print(f"[ERROR] Dataset not found: {dataset_path}",file=sys.stdout)
             return jsonify({"error": "Dataset not found"}), 404

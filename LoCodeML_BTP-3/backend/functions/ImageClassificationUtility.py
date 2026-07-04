@@ -14,7 +14,7 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 import json
 from transformers import AutoImageProcessor
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 sys.path.append('../Enums/')
 from enum import Enum

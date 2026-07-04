@@ -14,7 +14,7 @@ import pandas as pd
 import joblib
 import os
 import sys 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 sys.path.append('../Enums/')
 # from Enums.enums import RegressionMetrics

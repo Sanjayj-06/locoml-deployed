@@ -39,7 +39,7 @@ def trainOnMoreData():
     
     response2 = response2.json()
     csv_content = response.content.decode('utf-8')
-    original_dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + original_dataset_id + '.csv'
+    original_dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + original_dataset_id + '.csv'
     df = pd.read_csv(original_dataset_path)
     # return {}
     print("This is the new dataset file", new_dataset_file)
@@ -48,9 +48,9 @@ def trainOnMoreData():
     df = pd.concat([df, df2])
     # return {}
     # # print(response2)
-    dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + new_dataset_id + '.csv'
+    dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + new_dataset_id + '.csv'
     df.to_csv(dataset_path, index=False)
-    dataset_size = os.path.getsize(os.getenv('PROJECT_PATH') + 'Datasets/' + new_dataset_id + '.csv')
+    dataset_size = os.path.getsize(os.getenv('PROJECT_PATH', '') + 'Datasets/' + new_dataset_id + '.csv')
     collection = db['Datasets']
 
     collection.insert_one({

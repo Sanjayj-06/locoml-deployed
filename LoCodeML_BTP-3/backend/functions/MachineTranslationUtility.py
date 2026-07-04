@@ -9,7 +9,7 @@ import os
 import sys
 import joblib
 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 
 class MachineTranslationMetrics(Enum):

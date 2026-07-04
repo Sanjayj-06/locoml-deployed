@@ -12,7 +12,7 @@ import zipfile
 from datasets import load_from_disk
 from icecream import ic
 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 from mongoDB import db
 sys.path.append('../Enums/')
@@ -24,7 +24,7 @@ def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target
 
     if metric_mode.lower() == 'autoselect':
         if objective.lower() == 'classification':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.csv'
             df = pd.read_csv(dataset_path)
             class_dist = df[target_column].value_counts()
             is_balanced = class_dist.min() / class_dist.max() > 0.5
@@ -35,15 +35,15 @@ def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target
                 metric_type = ClassificationMetrics.AUC.value
 
         elif objective.lower() == 'regression':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.csv'
             df = pd.read_csv(dataset_path)
             metric_type = RegressionMetrics.R2.value
         elif objective.lower() == 'imageclassification':
-            dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.zip'
-            if not os.path.exists(os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+dataset_id):
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/'+dataset_id+'.zip'
+            if not os.path.exists(os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+dataset_id):
                 with zipfile.ZipFile(dataset_path, 'r') as zip_ref:
-                    zip_ref.extractall(os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id)
-            dataset_path = os.getenv('PROJECT_PATH') + 'ExtractedDatasets/'+ dataset_id
+                    zip_ref.extractall(os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id)
+            dataset_path = os.getenv('PROJECT_PATH', '') + 'ExtractedDatasets/'+ dataset_id
             dataset = load_from_disk(dataset_path)
             metric_type = ImageClassificationMetrics.Accuracy.value
 
@@ -100,7 +100,7 @@ def trainModelCustom(dataset_id, model_name, model_type, hyperparameters, target
     print("Status: Saving Model and Pipeline in file system", file=sys.stderr)
     new_model_id = nanoid.generate(
         alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', size=6)
-    save_path = os.getenv('PROJECT_PATH') + 'Models/' + new_model_id + '.pkl'
+    save_path = os.getenv('PROJECT_PATH', '') + 'Models/' + new_model_id + '.pkl'
     clf_util.saveModel(best_model_name, save_path)
     # print("Transformation Pipeline and Model Successfully Saved", file=sys.stderr)
 
@@ -241,6 +241,6 @@ ic(dataset_id, model_name, model_type, hyperparameters,
 
 details = trainModelCustom(dataset_id, model_name, model_type, hyperparameters,
                            target_column, metric_mode, metric_type, objective, model_id, isUpdate, usecase=usecase, visibility=visibility)
-details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+details_path = os.getenv('PROJECT_PATH', '') + 'Usage/details.pkl'
 with open(details_path, 'wb') as f:
     pickle.dump(details, f)

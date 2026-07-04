@@ -33,7 +33,7 @@ import numpy as np
 from datasets import load_metric
 from transformers import TrainingArguments, Trainer
 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 sys.path.append('../Enums/')
 # from Enums.enums import ClassificationMetrics

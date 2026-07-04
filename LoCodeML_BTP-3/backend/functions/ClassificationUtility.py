@@ -20,7 +20,7 @@ import numpy as np
 import os
 import sys
 from icecream import ic 
-project_path = os.getenv('PROJECT_PATH')
+project_path = os.getenv('PROJECT_PATH', '')
 sys.path.append(project_path)
 sys.path.append('../Enums/')
 # from Enums.enums import ClassificationMetrics

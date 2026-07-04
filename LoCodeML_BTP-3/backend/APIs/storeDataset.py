@@ -22,10 +22,10 @@ def storeDatasetFile():
     # Checking the dataset type 
     if dataset_type == ".csv":
         dataset_type = "text"
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.csv'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.csv'
     elif dataset_type == ".zip":
         dataset_type = "image"
-        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/' + dataset_id + '.zip'
+        dataset_path = os.getenv('PROJECT_PATH', '') + 'Datasets/' + dataset_id + '.zip'
 
 
     # print(dataset_path)
