@@ -37,11 +37,13 @@ import {
 } from "reactstrap";
 
 import routes from "routes.js";
+import axios from "axios";
 
 function Header(props) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [color, setColor] = React.useState("transparent");
+  const [systemStatus, setSystemStatus] = React.useState("Connecting...");
   const sidebarToggle = React.useRef();
   const location = useLocation();
   const toggle = () => {
@@ -110,6 +112,27 @@ function Header(props) {
       sidebarToggle.current.classList.toggle("toggled");
     }
   }, [location]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const checkStatus = async () => {
+      try {
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+        await axios.get(`${apiBase}/`);
+        if (isMounted) setSystemStatus("System Online");
+      } catch (error) {
+        if (isMounted) setSystemStatus("Connecting...");
+      }
+    };
+    
+    checkStatus();
+    const interval = setInterval(checkStatus, 15000); // Check every 15 seconds
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
   return (
     // add or remove classes depending if we are on full-screen-maps page or not
     <Navbar
@@ -147,6 +170,42 @@ function Header(props) {
         </NavbarToggler>
         <Collapse isOpen={isOpen} navbar className="justify-content-end">
           <Nav navbar>
+            <style>
+              {`
+                @keyframes blink {
+                  0% { opacity: 1; }
+                  50% { opacity: 0.4; }
+                  100% { opacity: 1; }
+                }
+              `}
+            </style>
+            <NavItem className="d-flex align-items-center mr-3">
+              <div 
+                className="btn btn-sm m-0" 
+                style={{
+                  backgroundColor: systemStatus === "System Online" ? "#28a745" : "#ffc107",
+                  color: systemStatus === "System Online" ? "white" : "#333",
+                  borderRadius: "20px",
+                  pointerEvents: "none",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "5px 15px",
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                }}
+              >
+                <div style={{
+                  width: "8px", 
+                  height: "8px", 
+                  borderRadius: "50%", 
+                  backgroundColor: systemStatus === "System Online" ? "#fff" : "#333",
+                  marginRight: "8px",
+                  animation: systemStatus === "Connecting..." ? "blink 1.5s infinite" : "none"
+                }} />
+                {systemStatus}
+              </div>
+            </NavItem>
             {/* <NavItem>
               <Link to="#pablo" className="nav-link btn-magnify">
                 <i className="nc-icon nc-layout-11" />

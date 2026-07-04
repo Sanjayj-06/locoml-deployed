@@ -46,6 +46,10 @@ app.register_blueprint(stressTestAPIs)
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(proxy_blueprint)
 
+@app.route("/")
+def health_check():
+    return "Backend Online", 200
+
 app.config['REDIS_URL'] = os.getenv('REDIS_URL')
 
 if __name__ == "__main__":
